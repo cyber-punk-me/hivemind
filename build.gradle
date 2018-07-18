@@ -1,0 +1,83 @@
+buildscript {
+    ext {
+        ext.kotlin_version = '1.2.10'
+        vertx_version = '3.5.2'
+    }
+
+    repositories {
+        jcenter()
+        mavenCentral()
+    }
+
+    dependencies {
+       // classpath "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+plugins {
+    id 'java'
+    id 'org.jetbrains.kotlin.jvm' version '1.2.10'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '1.2.4'
+}
+
+tasks.withType(JavaCompile) {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+mainClassName = 'io.cyber.hivemind.MainVerticle'
+
+repositories {
+    jcenter()
+    mavenCentral()
+    maven {
+        url = URI.create("https://oss.sonatype.org/content/repositories/iovertx-3717/")
+    }
+}
+
+dependencies {
+    compile "io.vertx:vertx-core:$vertx_version"
+    compile "io.vertx:vertx-lang-kotlin:$vertx_version"
+    compile "io.vertx:vertx-web:$vertx_version"
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
+    testCompile "junit:junit:4.12"
+    testCompile "io.vertx:vertx-unit:$vertx_version"
+}
+
+// Redeploy watcher.
+run {
+    args = ['run', mainClassName,
+            "--launcher-class=$mainClassName",
+            "--redeploy=src/**/*.*",
+            "--on-redeploy=./gradlew classes"
+    ]
+}
+
+// Naming and packaging settings for the "shadow jar".
+shadowJar {
+    baseName = 'app'
+    classifier = 'shadow'
+
+    mergeServiceFiles {
+        include 'META-INF/services/io.vertx.core.spi.VerticleFactory'
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.5.1'
+}
+
+// Heroku relies on the 'stage' task to deploy.
+task stage {
+    dependsOn shadowJar
+}
+
+sourceSets {
+    main.resources.srcDirs += 'src/main/res'
+}
