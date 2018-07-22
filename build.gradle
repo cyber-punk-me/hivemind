@@ -31,7 +31,7 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
         jvmTarget = "1.8"
     }
 }
-mainClassName = 'io.cyber.hivemind.MainVerticle'
+mainClassName = 'io.cyber.hivemind.WebVerticle'
 
 repositories {
     jcenter()
@@ -45,6 +45,7 @@ dependencies {
     compile "io.vertx:vertx-core:$vertx_version"
     compile "io.vertx:vertx-lang-kotlin:$vertx_version"
     compile "io.vertx:vertx-web:$vertx_version"
+    compile "io.vertx:vertx-reactive-streams:$vertx_version"
     compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
     testCompile "junit:junit:4.12"
     testCompile "io.vertx:vertx-unit:$vertx_version"

@@ -1,5 +1,6 @@
-package io.cyber.hivemind
+package io.cyber.hivemind.net
 
+import io.vertx.core.Vertx
 import io.vertx.ext.web.RoutingContext
 
 
@@ -8,7 +9,7 @@ import io.vertx.ext.web.RoutingContext
  * Date: 22/07/2018
  * Time: 01:20
  */
-class ModelController {
+class ModelController(vertx: Vertx) {
     fun getModel(routingContext: RoutingContext) {
         val modelId = routingContext.request().getParam("modelId")
     }

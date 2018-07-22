@@ -1,21 +1,22 @@
-package io.cyber.hivemind
+package io.cyber.hivemind.net
 
+import io.vertx.core.Vertx
 import io.vertx.ext.web.RoutingContext
 
-class DataController {
-    fun getData(routingContext: RoutingContext) {
-        val dataId = routingContext.request().getParam("dataId")
+class ScriptController(vertx: Vertx) {
+    fun getScript(routingContext: RoutingContext) {
+        val scriptId = routingContext.request().getParam("scriptId")
     }
 
-    fun postData(context: RoutingContext) {
+    fun postScript(context: RoutingContext) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    fun deleteData(context: RoutingContext) {
+    fun deleteScript(context: RoutingContext) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    fun findData(context: RoutingContext) {
+    fun findScript(context: RoutingContext) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 }

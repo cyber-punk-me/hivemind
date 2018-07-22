@@ -1,4 +1,4 @@
-package io.kyr7.hivemind;
+package io.cyber.hivemind;
 
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
@@ -10,14 +10,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
-public class MainVerticleTest {
+public class WebVerticleTest {
 
   private Vertx vertx;
 
   @Before
   public void setUp(TestContext tc) {
     vertx = Vertx.vertx();
-    vertx.deployVerticle(MainVerticle.class.getName(), tc.asyncAssertSuccess());
+    vertx.deployVerticle(WebVerticle.class.getName(), tc.asyncAssertSuccess());
   }
 
   @After
