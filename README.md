@@ -1,4 +1,4 @@
-NOT RELEASE YET
+NOT RELEASED YET
 
 The Hivemind server implements API for machine learning driven apps and devices.
 The cornerstone of the client-server ML duo is the computation engine. We select Tensorflow, since it has increasingly growing support across a range of hardware solutions.
