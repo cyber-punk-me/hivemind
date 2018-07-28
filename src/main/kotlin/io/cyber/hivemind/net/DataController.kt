@@ -5,13 +5,12 @@ import io.cyber.hivemind.Type
 import io.cyber.hivemind.Verb
 import io.cyber.hivemind.service.FileVerticle
 import io.cyber.hivemind.util.downloadFile
-import io.cyber.hivemind.util.toJson
-import io.cyber.hivemind.util.uploadFile
 import io.vertx.core.AsyncResult
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.Message
 import io.vertx.ext.web.RoutingContext
+
 
 class DataController(val vertx: Vertx) {
 
@@ -20,30 +19,29 @@ class DataController(val vertx: Vertx) {
         val cmd = Command(Type.DATA, Verb.GET)
         val opts = DeliveryOptions()
         opts.addHeader("id", dataId)
-        vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) {ar: AsyncResult<Message<String>>? ->
+        vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<String>>? ->
             if (ar!!.succeeded()) {
                 downloadFile(context, ar.result().body())
             } else {
                 ar.cause().printStackTrace()
+                context.response().end(ar.toString())
             }
-            context.response().close()
         }
     }
 
     fun postData(context: RoutingContext) {
-        val dataId = context.request().getParam("dataId")
-        val file = uploadFile(context, vertx)
-        val cmd = Command(Type.DATA, Verb.POST, buffer = file)
-        val opts = DeliveryOptions()
-        opts.addHeader("id", dataId)
-        vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) {ar: AsyncResult<Message<String>>? ->
-            if (ar!!.succeeded()) {
-                context.response().write(toJson(ar.result().body()))
-            } else {
-                ar.cause().printStackTrace()
+            val cmd = Command(Type.DATA, Verb.POST, buffer = context.body)
+            val opts = DeliveryOptions()
+            val dataId = context.request().getParam("dataId")
+            opts.addHeader("id", dataId)
+            vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<String>>? ->
+                if (ar!!.succeeded()) {
+                    context.response().write(ar.result().toString())
+                } else {
+                    ar.cause().printStackTrace()
+                }
+                context.response().close()
             }
-            context.response().close()
-        }
     }
 
     fun deleteData(context: RoutingContext) {

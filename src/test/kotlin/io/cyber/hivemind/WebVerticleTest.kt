@@ -27,8 +27,9 @@ class WebVerticleTest {
 
     @Before
     fun setUp(tc: TestContext) {
-        vertx.deployVerticle(WebVerticle::class.java.name, tc.asyncAssertSuccess())
-        vertx.deployVerticle(FileVerticle::class.java.name, tc.asyncAssertSuccess())
+        vertx.deployVerticle(WebVerticle::class.java.name) {
+            vertx.deployVerticle(FileVerticle::class.java.name, tc.asyncAssertSuccess())
+        }
     }
 
     @After
@@ -39,19 +40,16 @@ class WebVerticleTest {
     @Test
     fun testDownloadData(tc: TestContext) {
         val async = tc.async()
-        vertx.createHttpClient().getNow(8080, "localhost", "/data/1") { response ->
+        vertx.createHttpClient().getNow(8080, "localhost", "/data/7ecff093-b020-48e6-a866-6caed885baff") { response ->
             tc.assertEquals(response.statusCode(), 200)
-            response.bodyHandler { body ->
-                tc.assertTrue(body.length() > 0)
-                async.complete()
-            }
+            async.complete()
         }
     }
 
     @Test
     fun testUploadData(tc: TestContext) {
         val async = tc.async()
-        val req = vertx.createHttpClient().put(8080, "localhost", "/data/1") { response -> println("File uploaded " + response.statusCode()) }
+        val req = vertx.createHttpClient().put(8080, "localhost", "/data/7ecff093-b020-48e6-a866-6caed885baff") { response -> println("File uploaded " + response.statusCode()) }
 
         val filename = "test.zip"
 
