@@ -12,6 +12,7 @@ class WebVerticle : AbstractVerticle() {
 
     override fun start() {
 
+        vertx.eventBus().registerDefaultCodec(Command::class.java, CommandCodec())
         val router = Router.router(vertx)
         router.route().handler(BodyHandler.create())
         //todo implement file system watchdog for local dev

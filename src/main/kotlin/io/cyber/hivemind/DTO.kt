@@ -18,5 +18,5 @@ enum class Type {
 data class Meta(val id: String?, val name: String?, val note: String?,
                 val path: String?, val error: String?, val time: Long, val tags: List<String>?)
 
-data class Command(val type: Type, val verb: Verb, val params : Map<String, Any>?,
-                   val buffer: Buffer? = null)
+data class Command(val type: Type, val verb: Verb, val buffer: Buffer? = null)
+

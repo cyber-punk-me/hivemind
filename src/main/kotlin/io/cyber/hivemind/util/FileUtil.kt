@@ -39,5 +39,5 @@ fun downloadFile(routingContext: RoutingContext, fileName : String) {
     routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "text/plain")
           .putHeader("Content-Disposition", "attachment; filename=\"$fileName\"")
           .putHeader(HttpHeaders.TRANSFER_ENCODING, "chunked")
-          .sendFile(fileName).end()
+          .sendFile(fileName)
 }

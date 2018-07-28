@@ -17,7 +17,7 @@ interface FileService {
 
 class DiskFileServiceImpl : FileService {
     override fun getName(type: Type, id: UUID): String {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return "test.zip"
     }
 
     override fun store(type: Type, id: UUID, uploadedFile: Buffer): Meta {

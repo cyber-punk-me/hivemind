@@ -16,10 +16,6 @@ import java.util.*
  */
 class FileVerticle : AbstractVerticle() {
 
-    companion object {
-        val FILE_VERTICLE = "file-verticle"
-    }
-
     var fileService: FileService? = null
 
     override fun init(vertx: Vertx, context: Context) {
@@ -30,18 +26,18 @@ class FileVerticle : AbstractVerticle() {
     private var consumer: MessageConsumer<Command>? = null
 
     override fun start(startFuture: Future<Void>) {
-        consumer = vertx.eventBus().consumer<Command>(FILE_VERTICLE) { message ->
+        consumer = vertx.eventBus().consumer<Command>(FileVerticle::class.java.name) { message ->
             val metaS = message.headers()["meta"]
-            if (metaS != null) {
+            val idHeader = message.headers()["id"]
+            val id = idHeader?.let{UUID.fromString(idHeader)}
+            if (metaS != null || id != null) {
                 val command = message.body()
                 when (command.verb) {
                     Verb.GET -> {
-                        val id = command.params?.get("id") as UUID
-                        message.reply(fileService?.getName(command.type, id))
+                        message.reply(fileService?.getName(command.type, id!!))
                     }
                     Verb.POST -> {
-                        val id = command.params?.get("id") as UUID
-                        message.reply(command.buffer?.let { fileService?.store(command.type, id, it) })
+                        message.reply(command.buffer?.let { fileService?.store(command.type, id!!, it) })
                     }
                     Verb.DELETE -> TODO()
                     Verb.FIND -> TODO()
