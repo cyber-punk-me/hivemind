@@ -21,6 +21,7 @@ class DataController(val vertx: Vertx) {
         opts.addHeader("id", dataId)
         vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<String>>? ->
             if (ar!!.succeeded()) {
+                //download file by the name provided by the FileService
                 downloadFile(context, ar.result().body())
             } else {
                 ar.cause().printStackTrace()
@@ -36,6 +37,7 @@ class DataController(val vertx: Vertx) {
             opts.addHeader("id", dataId)
             vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<String>>? ->
                 if (ar!!.succeeded()) {
+                    //write the buffer returned from FileVerticle
                     context.response().write(ar.result().toString())
                 } else {
                     ar.cause().printStackTrace()

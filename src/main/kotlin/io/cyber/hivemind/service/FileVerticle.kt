@@ -1,7 +1,9 @@
 package io.cyber.hivemind.service
 
 import io.cyber.hivemind.Command
+import io.cyber.hivemind.Meta
 import io.cyber.hivemind.Verb
+import io.cyber.hivemind.util.fromJson
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Context
 import io.vertx.core.Future
@@ -27,21 +29,30 @@ class FileVerticle : AbstractVerticle() {
 
     override fun start(startFuture: Future<Void>) {
         consumer = vertx.eventBus().consumer<Command>(FileVerticle::class.java.name) { message ->
-            val metaS = message.headers()["meta"]
+            val metaHeader = message.headers()["meta"]
             val idHeader = message.headers()["id"]
-            val id = idHeader?.let{UUID.fromString(idHeader)}
-            if (metaS != null || id != null) {
+
+            if (metaHeader != null || idHeader != null) {
                 val command = message.body()
                 when (command.verb) {
                     Verb.GET -> {
+                        val id = idHeader?.let{UUID.fromString(idHeader)}
                         message.reply(fileService?.getName(command.type, id!!))
                     }
                     Verb.POST -> {
+                        val id = idHeader?.let{UUID.fromString(idHeader)}
                         message.reply(command.buffer?.let { fileService?.store(command.type, id!!, it) })
                     }
-                    Verb.DELETE -> TODO()
-                    Verb.FIND -> TODO()
-                    Verb.APPLY -> TODO()
+                    Verb.DELETE -> {
+                        val id = idHeader?.let{UUID.fromString(idHeader)}
+                        message.reply(fileService?.delete(command.type, id!!))
+                    }
+                    Verb.FIND -> {
+                        val meta = idHeader?.let{ fromJson(metaHeader, Meta::class.java)}
+                        message.reply(fileService?.find(command.type, meta!!))
+                    }
+                    else -> {
+                    }
                 }
             }
         }

@@ -13,15 +13,26 @@ import java.util.*
 interface FileService {
     fun getName(type: Type, id: UUID) : String
     fun store(type: Type, id: UUID, uploadedFile : Buffer) : Meta
+    fun delete(type: Type, id: UUID): String
+    fun find(type: Type, meta: Meta): List<Meta>
 }
 
 class DiskFileServiceImpl : FileService {
-    override fun getName(type: Type, id: UUID): String {
-        return "test.zip"
-    }
-
     override fun store(type: Type, id: UUID, uploadedFile: Buffer): Meta {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
+
+    override fun delete(type: Type, id: UUID): String {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun find(type: Type, meta: Meta): List<Meta> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun getName(type: Type, id: UUID): String {
+        return "local/data/test.zip"
+    }
+
 
 }
