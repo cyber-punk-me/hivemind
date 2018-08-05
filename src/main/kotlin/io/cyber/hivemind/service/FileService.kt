@@ -2,6 +2,7 @@ package io.cyber.hivemind.service
 
 import io.cyber.hivemind.Meta
 import io.cyber.hivemind.Type
+import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import java.util.*
 
@@ -17,7 +18,7 @@ interface FileService {
     fun find(type: Type, meta: Meta): List<Meta>
 }
 
-class DiskFileServiceImpl : FileService {
+class DiskFileServiceImpl(val vertx: Vertx) : FileService {
     override fun store(type: Type, id: UUID, uploadedFile: Buffer): Meta {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }

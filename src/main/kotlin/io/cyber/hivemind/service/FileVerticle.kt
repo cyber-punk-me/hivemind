@@ -22,7 +22,7 @@ class FileVerticle : AbstractVerticle() {
 
     override fun init(vertx: Vertx, context: Context) {
         super.init(vertx, context)
-        fileService = DiskFileServiceImpl::class.java.newInstance()
+        fileService = DiskFileServiceImpl(vertx)
     }
 
     private var consumer: MessageConsumer<Command>? = null
@@ -48,7 +48,7 @@ class FileVerticle : AbstractVerticle() {
                         message.reply(fileService?.delete(command.type, id!!))
                     }
                     Verb.FIND -> {
-                        val meta = idHeader?.let{ fromJson(metaHeader, Meta::class.java)}
+                        val meta = metaHeader?.let{ fromJson(metaHeader, Meta::class.java)}
                         message.reply(fileService?.find(command.type, meta!!))
                     }
                     else -> {

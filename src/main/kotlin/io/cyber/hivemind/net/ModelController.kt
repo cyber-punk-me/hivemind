@@ -6,10 +6,12 @@ import io.cyber.hivemind.Verb
 import io.cyber.hivemind.service.FileVerticle
 import io.cyber.hivemind.service.MLVerticle
 import io.cyber.hivemind.util.downloadFile
+import io.cyber.hivemind.util.fromJson
 import io.vertx.core.AsyncResult
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.Message
+import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
 
 
@@ -20,8 +22,8 @@ import io.vertx.ext.web.RoutingContext
  */
 class ModelController(val vertx: Vertx) {
 
-    fun getModel(routingContext: RoutingContext) {
-        val modelId = routingContext.request().getParam("modelId")
+    fun getModel(context: RoutingContext) {
+        val modelId = context.request().getParam("modelId")
     }
 
     fun postModel(context: RoutingContext) {
@@ -41,11 +43,13 @@ class ModelController(val vertx: Vertx) {
     }
 
     fun applyModelToInput(context: RoutingContext) {
+        val modelId = context.request().getParam("modelId")
         val cmd = Command(Type.MODEL, Verb.APPLY, context.body)
         val opts = DeliveryOptions()
-        vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<String>>? ->
+        opts.addHeader("id", modelId)
+        vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<JsonObject>>? ->
             if (ar!!.succeeded()) {
-                context.response().end(ar.result().body())
+                context.response().end(ar.result().body().encode())
             } else {
                 ar.cause().printStackTrace()
                 context.response().end(ar.toString())

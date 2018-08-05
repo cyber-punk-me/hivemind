@@ -43,6 +43,7 @@ class WebVerticle : AbstractVerticle() {
             val vertx = Vertx.vertx()
             vertx.deployVerticle("io.cyber.hivemind.WebVerticle")
             vertx.deployVerticle("io.cyber.hivemind.service.FileVerticle")
+            vertx.deployVerticle("io.cyber.hivemind.service.MLVerticle")
         }
     }
 
