@@ -41,6 +41,7 @@ class FileVerticle : AbstractVerticle() {
                     }
                     Verb.POST -> {
                         val id = idHeader?.let{UUID.fromString(idHeader)}
+                        //input meta handler
                         message.reply(command.buffer?.let { fileService?.store(command.type, id!!, it) })
                     }
                     Verb.DELETE -> {

@@ -15,7 +15,6 @@ class WebVerticle : AbstractVerticle() {
         vertx.eventBus().registerDefaultCodec(Command::class.java, CommandCodec())
         val router = Router.router(vertx)
         router.route().handler(BodyHandler.create())
-        //todo implement file system watchdog for local dev
         val modelController = ModelController(vertx)
         router.get("/model/:modelId").handler(modelController::getModel)
         router.post("/model/:modelId").handler(modelController::postModel)

@@ -41,3 +41,21 @@ fun downloadFile(routingContext: RoutingContext, fileName : String) {
           .putHeader(HttpHeaders.TRANSFER_ENCODING, "chunked")
           .sendFile(fileName)
 }
+
+fun getNextFileName(files : List<String>?) : String {
+    if (files == null || files.isEmpty()) return "0"
+    val maxFile : Int? = files.filter { f -> isInteger(f) }.map { s -> Integer.parseInt(s) }.max()
+    return when {
+        maxFile != null -> "" + (maxFile + 1)
+        else -> "0"
+    }
+}
+
+fun isInteger(s: String): Boolean {
+    try {
+        Integer.parseInt(s)
+    } catch (e: Exception) {
+        return false
+    }
+    return true
+}
