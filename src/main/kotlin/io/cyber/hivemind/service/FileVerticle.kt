@@ -4,11 +4,9 @@ import io.cyber.hivemind.Command
 import io.cyber.hivemind.Meta
 import io.cyber.hivemind.Verb
 import io.cyber.hivemind.util.fromJson
-import io.vertx.core.AbstractVerticle
-import io.vertx.core.Context
-import io.vertx.core.Future
-import io.vertx.core.Vertx
+import io.vertx.core.*
 import io.vertx.core.eventbus.MessageConsumer
+import io.vertx.core.json.JsonObject
 import java.util.*
 
 /**
@@ -36,20 +34,25 @@ class FileVerticle : AbstractVerticle() {
                 val command = message.body()
                 when (command.verb) {
                     Verb.GET -> {
-                        val id = idHeader?.let{UUID.fromString(idHeader)}
+                        val id = idHeader?.let { UUID.fromString(idHeader) }
                         message.reply(fileService?.getName(command.type, id!!))
                     }
                     Verb.POST -> {
-                        val id = idHeader?.let{UUID.fromString(idHeader)}
+                        val id = idHeader?.let { UUID.fromString(idHeader) }
                         //input meta handler
-                        message.reply(command.buffer?.let { fileService?.store(command.type, id!!, it) })
+                        command.buffer?.let {
+                            fileService?.store(command.type, id!!, it,
+                                    Handler { metaRes: AsyncResult<Meta> ->
+                                        message.reply(metaRes.result())
+                                    })
+                        }
                     }
                     Verb.DELETE -> {
-                        val id = idHeader?.let{UUID.fromString(idHeader)}
+                        val id = idHeader?.let { UUID.fromString(idHeader) }
                         message.reply(fileService?.delete(command.type, id!!))
                     }
                     Verb.FIND -> {
-                        val meta = metaHeader?.let{ fromJson(metaHeader, Meta::class.java)}
+                        val meta = metaHeader?.let { fromJson(metaHeader, Meta::class.java) }
                         message.reply(fileService?.find(command.type, meta!!))
                     }
                     else -> {

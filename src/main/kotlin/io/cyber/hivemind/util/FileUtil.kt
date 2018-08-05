@@ -4,6 +4,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpHeaders
 import io.vertx.ext.web.RoutingContext
+import java.io.File
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 
@@ -44,7 +45,7 @@ fun downloadFile(routingContext: RoutingContext, fileName : String) {
 
 fun getNextFileName(files : List<String>?) : String {
     if (files == null || files.isEmpty()) return "0"
-    val maxFile : Int? = files.filter { f -> isInteger(f) }.map { s -> Integer.parseInt(s) }.max()
+    val maxFile : Int? = files.map { f -> f.split(File.separator).last() }. filter { f -> isInteger(f) }.map { s -> Integer.parseInt(s) }.max()
     return when {
         maxFile != null -> "" + (maxFile + 1)
         else -> "0"

@@ -1,10 +1,12 @@
 package io.cyber.hivemind.net
 
 import io.cyber.hivemind.Command
+import io.cyber.hivemind.Meta
 import io.cyber.hivemind.Type
 import io.cyber.hivemind.Verb
 import io.cyber.hivemind.service.FileVerticle
 import io.cyber.hivemind.util.downloadFile
+import io.cyber.hivemind.util.toJson
 import io.vertx.core.AsyncResult
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
@@ -35,10 +37,10 @@ class DataController(val vertx: Vertx) {
             val opts = DeliveryOptions()
             val dataId = context.request().getParam("dataId")
             opts.addHeader("id", dataId)
-            vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<String>>? ->
+            vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<Meta>>? ->
                 if (ar!!.succeeded()) {
                     //write the buffer returned from FileVerticle
-                    context.response().write(ar.result().toString())
+                    context.response().end(toJson(ar.result().body()))
                 } else {
                     ar.cause().printStackTrace()
                 }

@@ -19,7 +19,12 @@ curl -d '{"instances": [1.0, 2.0, 5.0]}' -X POST http://localhost:8501/v1/models
 #feed from docker(prebuilt model)
 docker exec -i -t tf_docker curl -d '{"instances": [1.0, 2.0, 5.0]}' -X POST http://localhost:8501/v1/models/half_plus_three:predict
 
-curl -d '{"instances": [1.0, 2.0, 5.0]}' -X POST http://localhost:8080/model/5d335160-bd2a-45e4-9199-8105a38941ad/apply
-
 docker stop tf_docker
 docker rm -f tf_docker
+
+predict:
+curl -d '{"instances": [1.0, 2.0, 5.0]}' -X POST http://localhost:8080/model/5d335160-bd2a-45e4-9199-8105a38941ad/apply
+download data:
+curl -X GET http://localhost:8080/data/5d335160-bd2a-45e4-9199-8105a38941ad --output deleteme
+upload data:
+curl -d '1.0, 2.0, 5.0' -X POST http://localhost:8080/data/5d335160-bd2a-45e4-9199-8105a38941ad

@@ -13,6 +13,7 @@ class WebVerticle : AbstractVerticle() {
     override fun start() {
 
         vertx.eventBus().registerDefaultCodec(Command::class.java, CommandCodec())
+        vertx.eventBus().registerDefaultCodec(Meta::class.java, MetaCodec())
         val router = Router.router(vertx)
         router.route().handler(BodyHandler.create())
         val modelController = ModelController(vertx)

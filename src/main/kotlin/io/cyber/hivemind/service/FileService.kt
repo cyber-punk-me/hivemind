@@ -4,10 +4,9 @@ import io.cyber.hivemind.Meta
 import io.cyber.hivemind.Type
 import io.cyber.hivemind.util.getNextFileName
 import io.vertx.core.AsyncResult
+import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
-import io.vertx.core.file.FileSystem
-import java.io.IOException
 import java.util.*
 
 /**
@@ -17,7 +16,7 @@ import java.util.*
  */
 interface FileService {
     fun getName(type: Type, id: UUID): String
-    fun store(type: Type, id: UUID, uploadedFile: Buffer)
+    fun store(type: Type, id: UUID, uploadedFile: Buffer, handler : Handler<AsyncResult<Meta>>)
     fun delete(type: Type, id: UUID): String
     fun find(type: Type, meta: Meta): List<Meta>
 }
@@ -25,14 +24,14 @@ interface FileService {
 //todo implement file system watchdog for local dev
 class DiskFileServiceImpl(val vertx: Vertx) : FileService {
 
-    var ROOT = "data"
+    var ROOT = "local"
     var DATA_ROOT = ROOT + "/data"
     var MODEL_ROOT = ROOT + "/model"
     var SCRIPT_ROOT = ROOT + "/script"
 
     var fs = vertx.fileSystem()
 
-    override fun store(type: Type, id: UUID, uploadedFile: Buffer) {
+    override fun store(type: Type, id: UUID, uploadedFile: Buffer, handler : Handler<AsyncResult<Meta>>) {
         val baseDir = when (type) {
             Type.DATA -> DATA_ROOT
             Type.MODEL -> MODEL_ROOT
@@ -42,19 +41,24 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
         fs.readDir(dir) { event: AsyncResult<MutableList<String>>? ->
             if (null == event?.result()) {
                 fs.mkdir(dir) {
-                    storeBuffer(type, dir, uploadedFile)
+                    storeBuffer(type, id, dir, uploadedFile, handler)
                 }
             } else {
-                storeBuffer(type, dir, uploadedFile)
+                storeBuffer(type, id, dir, uploadedFile, handler)
             }
         }
     }
 
-    private fun storeBuffer(type: Type, dir: String, file: Buffer) {
+    private fun storeBuffer(type: Type, id: UUID, dir: String, file: Buffer, handler: Handler<AsyncResult<Meta>>) {
         if (Type.DATA == type) {
             fs.readDir(dir) { event: AsyncResult<MutableList<String>>? ->
                 val fileName = getNextFileName(event?.result())
-                fs.writeFile("$dir/$fileName", file, {})
+                val path = "$dir/$fileName"
+                fs.writeFile(path, file) { ar ->
+                    run {
+                        handler.handle(ar.map { ar -> Meta(id, fileName, null, null, path, System.currentTimeMillis(), null) })
+                    }
+                }
             }
         }
     }
