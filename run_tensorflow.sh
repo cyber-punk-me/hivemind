@@ -28,3 +28,12 @@ download data:
 curl -X GET http://localhost:8080/data/5d335160-bd2a-45e4-9199-8105a38941ad --output deleteme
 upload data:
 curl -d '1.0, 2.0, 5.0' -X POST http://localhost:8080/data/5d335160-bd2a-45e4-9199-8105a38941ad
+
+TF + docker ubuntu (18):
+https://github.com/NVIDIA/nvidia-docker
+#needs nvidia-persistenced
+https://github.com/NVIDIA/nvidia-persistenced
+#check : sudo nvidia-docker run --rm nvidia/cuda nvidia-smi
+#tf-docker-gpu
+sudo nvidia-docker run --rm nvidia/cuda nvidia-smi
+sudo nvidia-docker run --rm --name tf1 -p 8888:8888 -p 6006:6006 redaboumahdi/image_processing:gpu jupyter notebook --allow-root
