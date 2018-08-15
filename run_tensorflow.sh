@@ -23,18 +23,23 @@ docker exec -i -t tf_docker curl -d '{"instances": [1.0, 2.0, 5.0]}' -X POST htt
 docker stop tf_docker
 docker rm -f tf_docker
 
-predict:
+#Hiveind API:
+#predict:
 curl -d '{"instances": [1.0, 2.0, 5.0]}' -X POST http://localhost:8080/model/5d335160-bd2a-45e4-9199-8105a38941ad/apply
-download data:
+#download data:
 curl -X GET http://localhost:8080/data/5d335160-bd2a-45e4-9199-8105a38941ad --output deleteme
-upload data:
+#upload data:
 curl -d '1.0, 2.0, 5.0' -X POST http://localhost:8080/data/5d335160-bd2a-45e4-9199-8105a38941ad
 
-TF + docker ubuntu (18):
-https://github.com/NVIDIA/nvidia-docker
+#TF + docker ubuntu (18):
+#https://github.com/NVIDIA/nvidia-docker
 #needs nvidia-persistenced
-https://github.com/NVIDIA/nvidia-persistenced
-#check : sudo nvidia-docker run --rm nvidia/cuda nvidia-smi
-#tf-docker-gpu
+#https://github.com/NVIDIA/nvidia-persistenced
+#check :
 sudo nvidia-docker run --rm nvidia/cuda nvidia-smi
 sudo nvidia-docker run --rm --name tf1 -p 8888:8888 -p 6006:6006 redaboumahdi/image_processing:gpu jupyter notebook --allow-root
+
+#train myo-nn
+sudo nvidia-docker run -v /home/kyr7/Documents/cyber/myo-armband-nn:/var/tmp --name myo-nn -p 8888:8888 tensorflow/tensorflow:latest-gpu
+sudo nvidia-docker exec -it myo-nn bash
+sudo nvidia-docker rm -f myo-nn
