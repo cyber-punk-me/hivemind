@@ -18,10 +18,10 @@ docker exec -i -t tf_docker bazel build -c opt //tensorflow_serving/example:mnis
 curl -d '{"instances": [1.0, 2.0, 5.0]}' -X POST http://localhost:8501/v1/models/half_plus_three:predict
 
 #feed from docker(prebuilt model)
-docker exec -i -t tf_docker curl -d '{"instances": [1.0, 2.0, 5.0]}' -X POST http://localhost:8501/v1/models/half_plus_three:predict
+sudo docker exec -it tf_docker curl -d '{"instances": [1.0, 2.0, 5.0]}' -X POST http://localhost:8501/v1/models/half_plus_three:predict
 
-docker stop tf_docker
-docker rm -f tf_docker
+sudo docker stop tf_docker
+sudo docker rm -f tf_docker
 
 #Hiveind API:
 #predict:
@@ -39,7 +39,18 @@ curl -d '1.0, 2.0, 5.0' -X POST http://localhost:8080/data/5d335160-bd2a-45e4-91
 sudo nvidia-docker run --rm nvidia/cuda nvidia-smi
 sudo nvidia-docker run --rm --name tf1 -p 8888:8888 -p 6006:6006 redaboumahdi/image_processing:gpu jupyter notebook --allow-root
 
-#train myo-nn
-sudo nvidia-docker run -v /home/kyr7/Documents/cyber/myo-armband-nn:/var/tmp --name myo-nn -p 8888:8888 tensorflow/tensorflow:latest-gpu
+####trying myo-nn with hivemind####
+#get tensorflow for python3 USE THE PATH TO MYO-NN instead of my path plz)
+sudo nvidia-docker run -v /home/kyr7/Documents/cyber/myo-armband-nn:/var/tmp --name myo-nn -p 8888:8888 tensorflow/tensorflow:latest-gpu-py3
+#go to container
 sudo nvidia-docker exec -it myo-nn bash
-sudo nvidia-docker rm -f myo-nn
+#inside container:
+cd /var/tmp
+#???apt install /var/tmp/nvinfer-runtime-trt-repo-ubuntu1404-3.0.4-ga-cuda9.0_1.0-1_amd64.deb
+apt-get update
+apt-get install python3-pip
+python3 -m pip install numpy sklearn myo-python
+
+python3 train.py
+
+#   sudo nvidia-docker rm -f myo-nn
