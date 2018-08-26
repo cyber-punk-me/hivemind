@@ -46,7 +46,6 @@ sudo nvidia-docker run -v /home/kyr7/Documents/cyber/myo-armband-nn:/var/tmp --n
 sudo nvidia-docker exec -it myo-nn bash
 #inside container:
 cd /var/tmp
-#???apt install /var/tmp/nvinfer-runtime-trt-repo-ubuntu1404-3.0.4-ga-cuda9.0_1.0-1_amd64.deb
 apt-get update
 apt-get install python3-pip
 python3 -m pip install numpy sklearn myo-python

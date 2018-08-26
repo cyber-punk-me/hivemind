@@ -1,0 +1,7 @@
+#TF + docker ubuntu (18):
+#https://github.com/NVIDIA/nvidia-docker
+#needs nvidia-persistenced
+#https://github.com/NVIDIA/nvidia-persistenced
+#check :
+sudo nvidia-docker run --rm nvidia/cuda nvidia-smi
+sudo nvidia-docker run --rm --name tf1 -p 8888:8888 -p 6006:6006 redaboumahdi/image_processing:gpu jupyter notebook --allow-root
