@@ -1,3 +1,3 @@
 #!/bin/bash
-sudo docker rmi -f myo
-sudo docker rm -f myo
+sudo docker rmi -f model-1
+sudo docker rm -f model-1

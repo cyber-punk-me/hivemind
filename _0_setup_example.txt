@@ -5,3 +5,9 @@
 #check :
 sudo nvidia-docker run --rm nvidia/cuda nvidia-smi
 sudo nvidia-docker run --rm --name tf1 -p 8888:8888 -p 6006:6006 redaboumahdi/image_processing:gpu jupyter notebook --allow-root
+
+cd local/script && git clone --depth=1 https://github.com/kyr7/myo-armband-nn
+
+#TF serving
+git clone --depth=1 https://github.com/tensorflow/serving.git
+#https://github.com/tensorflow/serving/blob/master/tensorflow_serving/g3doc/serving_basic.md#train-and-export-tensorflow-model
