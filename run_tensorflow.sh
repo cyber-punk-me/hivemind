@@ -15,10 +15,10 @@ docker exec -i -t tf_docker bazel build -c opt //tensorflow_serving/example:mnis
 
 
 #feed data(prebuilt model)
-curl -d '{"instances": [1.0, 2.0, 5.0]}' -X POST http://localhost:8501/v1/models/half_plus_three:predict
+curl -d '{"instances": [1.0, 2.0, 5.0]}' -X POST http://localhost:8501/v1/models/model-1:predict
 
 #feed from docker(prebuilt model)
-sudo docker exec -it tf_docker curl -d '{"instances": [1.0, 2.0, 5.0]}' -X POST http://localhost:8501/v1/models/half_plus_three:predict
+sudo docker exec -it model-1-servable curl -d '{"instances": [1.0, 2.0, 5.0]}' -X POST http://localhost:8501/v1/models/model-1:predict
 
 sudo docker stop tf_docker
 sudo docker rm -f tf_docker
