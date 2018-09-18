@@ -7,6 +7,7 @@ import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
+import io.vertx.core.file.FileSystem
 import java.util.*
 
 /**
@@ -16,7 +17,7 @@ import java.util.*
  */
 interface FileService {
     fun getName(type: Type, id: UUID): String
-    fun store(type: Type, id: UUID, uploadedFile: Buffer, handler : Handler<AsyncResult<Meta>>)
+    fun store(type: Type, id: UUID, uploadedFile: Buffer, handler: Handler<AsyncResult<Meta>>)
     fun delete(type: Type, id: UUID): String
     fun find(type: Type, meta: Meta): List<Meta>
 }
@@ -24,14 +25,16 @@ interface FileService {
 //todo implement file system watchdog for local dev
 class DiskFileServiceImpl(val vertx: Vertx) : FileService {
 
-    var ROOT = "local"
-    var DATA_ROOT = ROOT + "/data"
-    var MODEL_ROOT = ROOT + "/model"
-    var SCRIPT_ROOT = ROOT + "/script"
+    companion object {
+        const val ROOT = "local"
+        const val DATA_ROOT = "$ROOT/data"
+        const val MODEL_ROOT = "$ROOT/model"
+        const val SCRIPT_ROOT = "$ROOT/script"
+    }
 
-    var fs = vertx.fileSystem()
+    private val fs: FileSystem = vertx.fileSystem()
 
-    override fun store(type: Type, id: UUID, uploadedFile: Buffer, handler : Handler<AsyncResult<Meta>>) {
+    override fun store(type: Type, id: UUID, uploadedFile: Buffer, handler: Handler<AsyncResult<Meta>>) {
         val baseDir = when (type) {
             Type.DATA -> DATA_ROOT
             Type.MODEL -> MODEL_ROOT
@@ -55,9 +58,7 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
                 val fileName = getNextFileName(event?.result())
                 val path = "$dir/$fileName"
                 fs.writeFile(path, file) { ar ->
-                    run {
-                        handler.handle(ar.map { ar -> Meta(id, fileName, null, null, path, System.currentTimeMillis(), null) })
-                    }
+                    handler.handle(ar.map { _ -> Meta(id, fileName, null, path, null, System.currentTimeMillis(), null) })
                 }
             }
         }

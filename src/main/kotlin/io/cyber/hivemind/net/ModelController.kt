@@ -23,7 +23,7 @@ import io.vertx.ext.web.RoutingContext
 class ModelController(val vertx: Vertx) {
 
     fun getModel(context: RoutingContext) {
-        val modelId = context.request().getParam("modelId")
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     fun postModel(context: RoutingContext) {

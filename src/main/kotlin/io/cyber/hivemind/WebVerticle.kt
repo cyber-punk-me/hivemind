@@ -17,24 +17,24 @@ class WebVerticle : AbstractVerticle() {
         val router = Router.router(vertx)
         router.route().handler(BodyHandler.create())
         val modelController = ModelController(vertx)
+        router.post("/model/find").handler(modelController::findModel)
         router.get("/model/:modelId").handler(modelController::getModel)
         router.post("/model/:modelId").handler(modelController::postModel)
         router.delete("/model/:modelId").handler(modelController::deleteModel)
-        router.post("/model/find").handler(modelController::findModel)
         router.post("/apply/:modelId/:dataId").handler(modelController::applyModelToData)
         router.post("/apply/:modelId").handler(modelController::applyModelToInput)
 
         val dataController = DataController(vertx)
+        router.post("/data/find").handler(dataController::findData)
         router.get("/data/:dataId").handler(dataController::getData)
         router.post("/data/:dataId").handler(dataController::postData)
         router.delete("/data/:dataId").handler(dataController::deleteData)
-        router.post("/data/find").handler(dataController::findData)
 
         val scriptController = ScriptController(vertx)
+        router.post("/script/find").handler(scriptController::findScript)
         router.get("/script/:scriptId").handler(scriptController::getScript)
         router.post("/script/:scriptId").handler(scriptController::postScript)
         router.delete("/script/:scriptId").handler(scriptController::deleteScript)
-        router.post("/script/find").handler(scriptController::findScript)
 
         vertx.createHttpServer().requestHandler{ router.accept(it) }.listen(8080)
     }
