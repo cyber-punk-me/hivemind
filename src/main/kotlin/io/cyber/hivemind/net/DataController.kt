@@ -33,7 +33,7 @@ class DataController(val vertx: Vertx) {
     }
 
     fun postData(context: RoutingContext) {
-            val cmd = Command(Type.DATA, Verb.POST, buffer = context.body)
+            val cmd = Command(Type.DATA, Verb.POST, context.body)
             val opts = DeliveryOptions()
             val dataId = context.request().getParam("dataId")
             opts.addHeader("id", dataId)

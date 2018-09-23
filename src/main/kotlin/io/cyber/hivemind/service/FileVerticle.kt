@@ -34,18 +34,16 @@ class FileVerticle : AbstractVerticle() {
                 val command = message.body()
                 when (command.verb) {
                     Verb.GET -> {
-                        val id = idHeader?.let { UUID.fromString(idHeader) }
+                        val id = UUID.fromString(idHeader)
                         message.reply(fileService?.getName(command.type, id!!))
                     }
                     Verb.POST -> {
-                        val id = idHeader?.let { UUID.fromString(idHeader) }
+                        val id = UUID.fromString(idHeader)
                         //input meta handler
-                        command.buffer?.let {
-                            fileService?.store(command.type, id!!, it,
-                                    Handler { metaRes: AsyncResult<Meta> ->
-                                        message.reply(metaRes.result())
-                                    })
-                        }
+                        fileService?.store(command.type, id!!, command.buffer!!,
+                                Handler { metaRes: AsyncResult<Meta> ->
+                                    message.reply(metaRes.result())
+                                })
                     }
                     Verb.DELETE -> {
                         val id = idHeader?.let { UUID.fromString(idHeader) }

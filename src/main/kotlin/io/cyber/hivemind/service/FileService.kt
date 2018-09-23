@@ -61,6 +61,11 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
                     handler.handle(ar.map { _ -> Meta(id, fileName, null, path, null, System.currentTimeMillis(), null) })
                 }
             }
+        } else if (Type.SCRIPT == type) {
+            val path = "$dir/script.zip"
+            fs.writeFile(path, file) { ar ->
+                handler.handle(ar.map { _ -> Meta(id, path, null, path, null, System.currentTimeMillis(), null) })
+            }
         }
     }
 
