@@ -14,6 +14,8 @@ class WebVerticle : AbstractVerticle() {
 
         vertx.eventBus().registerDefaultCodec(Command::class.java, CommandCodec())
         vertx.eventBus().registerDefaultCodec(Meta::class.java, MetaCodec())
+        vertx.eventBus().registerDefaultCodec(RunStatus::class.java, RunStatusCodec())
+
         val router = Router.router(vertx)
         router.route().handler(BodyHandler.create())
         val modelController = ModelController(vertx)

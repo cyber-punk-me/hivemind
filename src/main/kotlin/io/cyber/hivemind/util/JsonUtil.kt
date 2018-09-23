@@ -2,6 +2,7 @@ package io.cyber.hivemind.util
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import io.vertx.core.buffer.Buffer
 
 /**
  * User: kirillskiy
@@ -13,6 +14,10 @@ val mapper = ObjectMapper().registerKotlinModule()
 
 fun <T> fromJson(json: String, clazz : Class<T>) : T {
     return mapper.readValue(json, clazz)
+}
+
+fun <T> fromJson(json: Buffer, clazz : Class<T>) : T {
+    return mapper.readValue(json.toString(), clazz)
 }
 
 fun toJson(obj : Any) : String {

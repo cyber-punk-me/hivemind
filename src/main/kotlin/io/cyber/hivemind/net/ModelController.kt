@@ -1,12 +1,11 @@
 package io.cyber.hivemind.net
 
-import io.cyber.hivemind.Command
-import io.cyber.hivemind.Type
-import io.cyber.hivemind.Verb
+import io.cyber.hivemind.*
 import io.cyber.hivemind.service.FileVerticle
 import io.cyber.hivemind.service.MLVerticle
 import io.cyber.hivemind.util.downloadFile
 import io.cyber.hivemind.util.fromJson
+import io.cyber.hivemind.util.toJson
 import io.vertx.core.AsyncResult
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.DeliveryOptions
@@ -26,8 +25,22 @@ class ModelController(val vertx: Vertx) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
+    /**
+     * Start training process
+     */
     fun postModel(context: RoutingContext) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val modelId = context.request().getParam("modelId")
+        val cmd = Command(Type.MODEL, Verb.POST, context.body)
+        val opts = DeliveryOptions()
+        opts.addHeader("modelId", modelId)
+        vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<RunStatus>>? ->
+            if (ar!!.succeeded()) {
+                context.response().end(toJson(ar.result().body()))
+            } else {
+                ar.cause().printStackTrace()
+                context.response().end(ar.toString())
+            }
+        }
     }
 
     fun deleteModel(context: RoutingContext) {
@@ -46,7 +59,7 @@ class ModelController(val vertx: Vertx) {
         val modelId = context.request().getParam("modelId")
         val cmd = Command(Type.MODEL, Verb.APPLY, context.body)
         val opts = DeliveryOptions()
-        opts.addHeader("id", modelId)
+        opts.addHeader("modelId", modelId)
         vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<JsonObject>>? ->
             if (ar!!.succeeded()) {
                 context.response().end(ar.result().body().encode())
