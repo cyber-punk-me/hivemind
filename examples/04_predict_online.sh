@@ -1,5 +1,5 @@
 #!/bin/bash
 #https://app.swaggerhub.com/apis/kyr7/hivemind/0.0.1#/model/modelApplyInput
 #not implemented
-curl -X POST "http://localhost:8080/apply/50842581-5b5c-4652-b6d1-35539ed471bb" \
- -H "accept: application/json" -H "Content-Type: application/form-data" -d "{ \"instances\": [ 1, 2, 3, 4 ]}"
+curl -d '{"instances" : [[-1.0, -2.0, 3.0, 3.0, -5.0, 6.0, 6.0, 8.0, 1.0, 2.0, 3.0, 4.0, 5.0, -1.0, 7.0, 8.0, 1.0, 2.0, -3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 1.0, 2.0, 5.0, 4.0, 5.0, 6.0, 7.0, 1.0]] }' \
+-X POST http://localhost:8501/v1/models/model-1:predict
