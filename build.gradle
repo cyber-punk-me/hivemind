@@ -2,6 +2,7 @@ buildscript {
     ext {
         ext.kotlin_version = '1.2.51'
         vertx_version = '3.5.3'
+        docker_cli_version = '3.5.12'
     }
 
     repositories {
@@ -45,10 +46,12 @@ dependencies {
     compile "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.+"
     compile "io.vertx:vertx-core:$vertx_version"
     compile "io.vertx:vertx-lang-kotlin:$vertx_version"
+    compile "io.vertx:vertx-shell:$vertx_version"
     compile "io.vertx:vertx-web:$vertx_version"
     compile "io.vertx:vertx-web-client:$vertx_version"
     compile "io.vertx:vertx-reactive-streams:$vertx_version"
     compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
+    compile "com.spotify:docker-client:$docker_cli_version"
     testCompile "junit:junit:4.12"
     testCompile "io.vertx:vertx-unit:$vertx_version"
 }
