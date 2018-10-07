@@ -3,11 +3,13 @@ package io.cyber.hivemind.service
 import io.cyber.hivemind.Meta
 import io.cyber.hivemind.Type
 import io.cyber.hivemind.util.getNextFileName
+import io.cyber.hivemind.util.unzipData
 import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.file.FileSystem
+import java.io.File
 import java.util.*
 
 /**
@@ -64,6 +66,7 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
         } else if (Type.SCRIPT == type) {
             val path = "$dir/script.zip"
             fs.writeFile(path, file) { ar ->
+                unzipData(File("${MLServiceImpl.workDir}/local/script/$id"), "${MLServiceImpl.workDir}/local/script/$id/script.zip")
                 handler.handle(ar.map { _ -> Meta(id, path, null, path, null, System.currentTimeMillis(), null) })
             }
         }

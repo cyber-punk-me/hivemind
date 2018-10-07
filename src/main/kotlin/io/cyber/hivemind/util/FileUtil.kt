@@ -1,13 +1,14 @@
 package io.cyber.hivemind.util
 
+import io.cyber.hivemind.service.MLServiceImpl
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpHeaders
 import io.vertx.ext.web.RoutingContext
-import java.io.File
-import java.io.UnsupportedEncodingException
+import java.io.*
 import java.net.URLDecoder
-
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
 
 
 /**
@@ -15,6 +16,9 @@ import java.net.URLDecoder
  * Date: 22/07/2018
  * Time: 21:26
  */
+
+val bufferSize = 4096
+
 fun uploadFile(routingContext : RoutingContext, vertx : Vertx) : Buffer? {
     val fileUploadSet = routingContext.fileUploads()
     val fileUploadIterator = fileUploadSet.iterator()
@@ -59,4 +63,39 @@ fun isInteger(s: String): Boolean {
         return false
     }
     return true
+}
+
+fun unzipData(directory: File, zipFileName: String) {
+    BufferedInputStream(FileInputStream(zipFileName)).use { `is` ->
+        ZipInputStream(BufferedInputStream(`is`)).use { zis ->
+            var entry: ZipEntry? = zis.nextEntry
+            while (entry != null) {
+                val entryName = entry.name
+                if (!entryName.isEmpty()) {
+                    if (entry.isDirectory) {
+                        if (!File(directory, entryName).mkdir()) {
+                            print("Failed to create directory")
+                            return
+                        }
+                    } else {
+                        val buff = ByteArray(bufferSize)
+                        var dest: BufferedOutputStream? = null
+                        try {
+                            val fos = FileOutputStream(File(directory, entryName))
+                            dest = BufferedOutputStream(fos, bufferSize)
+                            var count = zis.read(buff, 0, bufferSize)
+                            while (count != -1) {
+                                dest.write(buff, 0, count)
+                                count = zis.read(buff, 0, bufferSize)
+                            }
+                            dest.flush()
+                        } finally {
+                            dest?.close()
+                        }
+                    }
+                }
+                entry = zis.nextEntry
+            }
+        }
+    }
 }

@@ -15,7 +15,11 @@ import java.io.IOException
 import java.util.*
 import java.util.concurrent.TimeUnit
 import com.spotify.docker.client.DockerClient.ListContainersParam
-
+import com.spotify.docker.client.messages.ContainerConfig
+import com.spotify.docker.client.messages.ContainerCreation
+import com.spotify.docker.client.messages.HostConfig
+import io.cyber.hivemind.util.unzipData
+import io.vertx.core.file.FileSystem
 
 
 interface MLService {
@@ -30,11 +34,43 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     val TF_SERVABlE_PORT = 8501
     val TF_SERVABlE_URI = "/v1/models/half_plus_three:predict"
     val client = WebClient.create(vertx)
-    val docker : DockerClient = DefaultDockerClient("unix:///var/run/docker.sock")
+    val docker: DockerClient = DefaultDockerClient("unix:///var/run/docker.sock")
+    val fileSystem: FileSystem = vertx.fileSystem()
 
     override fun train(scriptId: UUID, modelId: UUID, dataId: UUID): RunStatus {
         print("training model $modelId from script $scriptId, with data $dataId")
-        //todo build
+        //trainInContainer(scriptId, modelId, dataId, tfCpuPy3)
+        fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
+        fileSystem.copyRecursive("$workDir/local/script/$scriptId/data/1", "$workDir/local/model/$modelId/1", true) {
+            runServableContainer(scriptId, modelId, dataId)
+        }
+        return RunStatus(RunState.RUNNING, Date(), null, scriptId, modelId, dataId)
+    }
+
+    private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, baseImage: String): RunStatus {
+        unzipData(File("$workDir/local/script/$scriptId"), "$workDir/local/script/$scriptId/script.zip")
+        val hostConfig: HostConfig =
+                HostConfig.builder()
+                        .binds("$workDir/local/script/$scriptId:/script-1/")
+                        .build()
+        docker.pull(baseImage)
+        val containerConfig: ContainerConfig = ContainerConfig.builder().workingDir("$workDir/local/script/$scriptId")
+                .image(baseImage)
+                .hostConfig(hostConfig)
+                .cmd("bash", "-c", "apt-get update && " +
+                        "apt-get install -y python3-pip &&" +
+                        "apt-get install -y git &&" +
+                        "python3 -m pip install numpy sklearn myo-python &&" +
+                        "cd /script-1 && ls && python3 train.py")
+                .build()
+        val creation: ContainerCreation = docker.createContainer(containerConfig)
+        val id = creation.id()
+        //val info = docker.inspectContainer(id)
+        docker.startContainer(id)
+        return RunStatus(RunState.RUNNING, Date(), null, scriptId, modelId, dataId)
+    }
+
+    private fun runServableContainer(scriptId: UUID, modelId: UUID, dataId: UUID): RunStatus {
         val containers = docker.listContainers(ListContainersParam.allContainers())
         val container = containers.first { c -> c.names().contains("/model-1-servable") }
         docker.startContainer(container.id())
@@ -65,10 +101,17 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
             proc.waitFor(10, TimeUnit.MINUTES)
             return proc.inputStream.bufferedReader()
-        } catch(e: IOException) {
+        } catch (e: IOException) {
             e.printStackTrace()
             return null
         }
+    }
+
+
+    companion object {
+        val workDir = System.getProperty("user.dir")
+        val tfNvidiaPy3 = "tensorflow/tensorflow:latest-gpu-py3"
+        val tfCpuPy3 = "tensorflow/tensorflow:latest-py3"
     }
 
 }
