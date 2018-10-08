@@ -14,12 +14,16 @@ import java.io.File
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.TimeUnit
-import com.spotify.docker.client.DockerClient.ListContainersParam
 import com.spotify.docker.client.messages.ContainerConfig
 import com.spotify.docker.client.messages.ContainerCreation
 import com.spotify.docker.client.messages.HostConfig
+import com.spotify.docker.client.messages.PortBinding
 import io.cyber.hivemind.util.unzipData
 import io.vertx.core.file.FileSystem
+import java.util.ArrayList
+import java.util.HashMap
+
+
 
 
 interface MLService {
@@ -39,16 +43,16 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
     override fun train(scriptId: UUID, modelId: UUID, dataId: UUID): RunStatus {
         print("training model $modelId from script $scriptId, with data $dataId")
-        //trainInContainer(scriptId, modelId, dataId, tfCpuPy3)
+        unzipData(File("$workDir/local/script/$scriptId"), "$workDir/local/script/$scriptId/script.zip")
+        //todo block on training trainInContainer(scriptId, modelId, dataId, tfCpuPy3)
+        fileSystem.deleteRecursiveBlocking("$workDir/local/model/$modelId/1", true)
         fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
-        fileSystem.copyRecursive("$workDir/local/script/$scriptId/data/1", "$workDir/local/model/$modelId/1", true) {
-            runServableContainer(scriptId, modelId, dataId)
-        }
+        fileSystem.copyRecursiveBlocking("$workDir/local/script/$scriptId/data/1", "$workDir/local/model/$modelId/1", true)
+        runServableContainer(scriptId, modelId, dataId)
         return RunStatus(RunState.RUNNING, Date(), null, scriptId, modelId, dataId)
     }
 
     private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, baseImage: String): RunStatus {
-        unzipData(File("$workDir/local/script/$scriptId"), "$workDir/local/script/$scriptId/script.zip")
         val hostConfig: HostConfig =
                 HostConfig.builder()
                         .binds("$workDir/local/script/$scriptId:/script-1/")
@@ -71,9 +75,34 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     private fun runServableContainer(scriptId: UUID, modelId: UUID, dataId: UUID): RunStatus {
-        val containers = docker.listContainers(ListContainersParam.allContainers())
-        val container = containers.first { c -> c.names().contains("/model-1-servable") }
-        docker.startContainer(container.id())
+        docker.pull(tfServing)
+
+        // Bind container ports to host ports
+        val ports = arrayOf("8500", "8501")
+        val portBindings = HashMap<String, List<PortBinding>>()
+        for (port in ports) {
+            val hostPorts = ArrayList<PortBinding>()
+            hostPorts.add(PortBinding.of("0.0.0.0", port))
+            portBindings["$port/tcp"] = hostPorts
+        }
+
+        val hostConfig: HostConfig =
+                HostConfig.builder()
+                        .binds("$workDir/local/model/$modelId:/models/$modelId")
+                        .portBindings(portBindings)
+                        .build()
+
+        val containerConfig: ContainerConfig = ContainerConfig.builder()
+                .image(tfServing)
+                .exposedPorts(HashSet(ports.asList()))
+                .env("MODEL_NAME=$modelId")
+                .hostConfig(hostConfig)
+                .build()
+
+        val creation: ContainerCreation = docker.createContainer(containerConfig)
+        val id = creation.id()
+        //val info = docker.inspectContainer(id)
+        docker.startContainer(id)
         return RunStatus(RunState.RUNNING, Date(), null, scriptId, modelId, dataId)
     }
 
@@ -110,8 +139,9 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
     companion object {
         val workDir = System.getProperty("user.dir")
-        val tfNvidiaPy3 = "tensorflow/tensorflow:latest-gpu-py3"
-        val tfCpuPy3 = "tensorflow/tensorflow:latest-py3"
+        const val tfNvidiaPy3 = "tensorflow/tensorflow:latest-gpu-py3"
+        const val tfCpuPy3 = "tensorflow/tensorflow:latest-py3"
+        const val tfServing = "tensorflow/serving:latest"
     }
 
 }
