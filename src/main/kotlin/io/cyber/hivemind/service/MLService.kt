@@ -24,8 +24,6 @@ import java.util.ArrayList
 import java.util.HashMap
 
 
-
-
 interface MLService {
     fun train(scriptId: UUID, modelId: UUID, dataId: UUID): RunStatus
     fun runData(modelId: UUID, dataId: List<UUID>): RunStatus
@@ -34,25 +32,26 @@ interface MLService {
 
 class MLServiceImpl(val vertx: Vertx) : MLService {
 
-    val TF_SERVABlE_HOST = "localhost"
-    val TF_SERVABlE_PORT = 8501
-    val TF_SERVABlE_URI = "/v1/models/half_plus_three:predict"
     val client = WebClient.create(vertx)
     val docker: DockerClient = DefaultDockerClient("unix:///var/run/docker.sock")
     val fileSystem: FileSystem = vertx.fileSystem()
-
-    //fileSystem.deleteRecursiveBlocking("$workDir/local/model/$modelId/1", true)
+    //
     //fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
     //fileSystem.copyRecursiveBlocking("$workDir/local/script/$scriptId/data/1", "$workDir/local/model/$modelId/1", true)
+
     override fun train(scriptId: UUID, modelId: UUID, dataId: UUID): RunStatus {
         print("training model $modelId from script $scriptId, with data $dataId")
         unzipData(File("$workDir/local/script/$scriptId"), "$workDir/local/script/$scriptId/script.zip")
-        trainInContainer(scriptId, modelId, dataId, tfCpuPy3)
-        //runServableContainer(scriptId, modelId, dataId)
+        val trainContainerId = trainInContainer(scriptId, modelId, dataId, TF_CPU_PY3)
+        docker.waitContainer(trainContainerId)
+        runServableContainer(scriptId, modelId, dataId)
         return RunStatus(RunState.RUNNING, Date(), null, scriptId, modelId, dataId)
     }
 
-    private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, baseImage: String): RunStatus {
+    private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, baseImage: String): String {
+        //fileSystem.deleteRecursiveBlocking("$workDir/local/model/$modelId/1", true)
+        //fileSystem.deleteRecursiveBlocking("$workDir/local/script/$scriptId/data", true)
+        fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
         val hostConfig: HostConfig =
                 HostConfig.builder()
                         .binds("$workDir/local/script/$scriptId:/script-1/", "$workDir/local/data/$dataId:/data", "$workDir/local/model/$modelId:/model")
@@ -60,25 +59,27 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         docker.pull(baseImage)
         val containerConfig: ContainerConfig = ContainerConfig.builder().workingDir("$workDir/local/script/$scriptId")
                 .image(baseImage)
+                .labels(hashMapOf(
+                        "service" to "training"
+                ))
                 .hostConfig(hostConfig)
                 .cmd("bash", "-c", "apt-get update && " +
                         "apt-get install -y python3-pip &&" +
                         "apt-get install -y git &&" +
                         "python3 -m pip install numpy sklearn myo-python &&" +
-                        "cd /script-1 && ls && rm -r data/1 " +
-                        "&& rm -r data/tensorflow_sessions " +
-                        "&& python3 train.py " +
-                        "&& cp -r data/1 /model")
+                        "cd /script-1 && ls && " +
+                        //"rm -r data/tensorflow_sessions && " +
+                        "python3 train.py && " +
+                        "cp -r data/1 /model")
                 .build()
         val creation: ContainerCreation = docker.createContainer(containerConfig)
         val id = creation.id()
-        //val info = docker.inspectContainer(id)
         docker.startContainer(id)
-        return RunStatus(RunState.RUNNING, Date(), null, scriptId, modelId, dataId)
+        return id
     }
 
     private fun runServableContainer(scriptId: UUID, modelId: UUID, dataId: UUID): RunStatus {
-        docker.pull(tfServing)
+        docker.pull(TF_SERVING)
 
         // Bind container ports to host ports
         val ports = arrayOf("8500", "8501")
@@ -96,7 +97,10 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
                         .build()
 
         val containerConfig: ContainerConfig = ContainerConfig.builder()
-                .image(tfServing)
+                .image(TF_SERVING)
+                .labels(hashMapOf(
+                        "service" to "serving"
+                ))
                 .exposedPorts(HashSet(ports.asList()))
                 .env("MODEL_NAME=$modelId")
                 .hostConfig(hostConfig)
@@ -114,7 +118,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     override fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>) {
-        client.post(TF_SERVABlE_PORT, TF_SERVABlE_HOST, TF_SERVABlE_URI)
+        client.post(Companion.TF_SERVABlE_PORT, Companion.TF_SERVABlE_HOST, Companion.TF_SERVABlE_URI)
                 .sendJsonObject(json) { ar ->
                     run {
                         handler.handle(ar.map { http -> http.bodyAsJsonObject() })
@@ -142,9 +146,12 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
     companion object {
         val workDir = System.getProperty("user.dir")
-        const val tfNvidiaPy3 = "tensorflow/tensorflow:latest-gpu-py3"
-        const val tfCpuPy3 = "tensorflow/tensorflow:latest-py3"
-        const val tfServing = "tensorflow/serving:latest"
+        const val TF_NVIDIA_PY3 = "tensorflow/tensorflow:latest-gpu-py3"
+        const val TF_CPU_PY3 = "tensorflow/tensorflow:latest-py3"
+        const val TF_SERVING = "tensorflow/serving:latest"
+        const val TF_SERVABlE_HOST = "localhost"
+        const val TF_SERVABlE_PORT = 8501
+        const val TF_SERVABlE_URI = "/v1/models/half_plus_three:predict"
     }
 
 }
