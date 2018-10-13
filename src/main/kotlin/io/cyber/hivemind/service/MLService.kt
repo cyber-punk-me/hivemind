@@ -41,21 +41,21 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     val docker: DockerClient = DefaultDockerClient("unix:///var/run/docker.sock")
     val fileSystem: FileSystem = vertx.fileSystem()
 
+    //fileSystem.deleteRecursiveBlocking("$workDir/local/model/$modelId/1", true)
+    //fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
+    //fileSystem.copyRecursiveBlocking("$workDir/local/script/$scriptId/data/1", "$workDir/local/model/$modelId/1", true)
     override fun train(scriptId: UUID, modelId: UUID, dataId: UUID): RunStatus {
         print("training model $modelId from script $scriptId, with data $dataId")
         unzipData(File("$workDir/local/script/$scriptId"), "$workDir/local/script/$scriptId/script.zip")
-        //todo block on training trainInContainer(scriptId, modelId, dataId, tfCpuPy3)
-        fileSystem.deleteRecursiveBlocking("$workDir/local/model/$modelId/1", true)
-        fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
-        fileSystem.copyRecursiveBlocking("$workDir/local/script/$scriptId/data/1", "$workDir/local/model/$modelId/1", true)
-        runServableContainer(scriptId, modelId, dataId)
+        trainInContainer(scriptId, modelId, dataId, tfCpuPy3)
+        //runServableContainer(scriptId, modelId, dataId)
         return RunStatus(RunState.RUNNING, Date(), null, scriptId, modelId, dataId)
     }
 
     private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, baseImage: String): RunStatus {
         val hostConfig: HostConfig =
                 HostConfig.builder()
-                        .binds("$workDir/local/script/$scriptId:/script-1/")
+                        .binds("$workDir/local/script/$scriptId:/script-1/", "$workDir/local/data/$dataId:/data", "$workDir/local/model/$modelId:/model")
                         .build()
         docker.pull(baseImage)
         val containerConfig: ContainerConfig = ContainerConfig.builder().workingDir("$workDir/local/script/$scriptId")
@@ -65,7 +65,10 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
                         "apt-get install -y python3-pip &&" +
                         "apt-get install -y git &&" +
                         "python3 -m pip install numpy sklearn myo-python &&" +
-                        "cd /script-1 && ls && python3 train.py")
+                        "cd /script-1 && ls && rm -r data/1 " +
+                        "&& rm -r data/tensorflow_sessions " +
+                        "&& python3 train.py " +
+                        "&& cp -r data/1 /model")
                 .build()
         val creation: ContainerCreation = docker.createContainer(containerConfig)
         val id = creation.id()
