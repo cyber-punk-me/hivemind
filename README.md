@@ -13,3 +13,7 @@ Hivemind is written in Kotlin with minimalistic dependencies, allowing you to us
 4. execute ./gradlew run
 
 check training status with `docker ps`  for now.
+
+## License
+
+[Apache License 2.0](LICENSE)
