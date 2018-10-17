@@ -2,7 +2,7 @@ buildscript {
     ext {
         ext.kotlin_version = '1.2.51'
         vertx_version = '3.5.3'
-        docker_cli_version = '3.5.12'
+        docker_cli_version = '8.14.1'
     }
 
     repositories {

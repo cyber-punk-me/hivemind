@@ -1,10 +1,7 @@
 package io.cyber.hivemind.net
 
 import io.cyber.hivemind.*
-import io.cyber.hivemind.service.FileVerticle
 import io.cyber.hivemind.service.MLVerticle
-import io.cyber.hivemind.util.downloadFile
-import io.cyber.hivemind.util.fromJson
 import io.cyber.hivemind.util.toJson
 import io.vertx.core.AsyncResult
 import io.vertx.core.Vertx
@@ -12,7 +9,6 @@ import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
-
 
 /**
  * User: kirillskiy
@@ -30,9 +26,13 @@ class ModelController(val vertx: Vertx) {
      */
     fun postModel(context: RoutingContext) {
         val modelId = context.request().getParam("modelId")
+        val gpu = context.request().getParam("gpu")
         val cmd = Command(Type.MODEL, Verb.POST, context.body)
         val opts = DeliveryOptions()
         opts.addHeader("modelId", modelId)
+        if (gpu != null) {
+            opts.addHeader("gpu", gpu)
+        }
         vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<RunStatus>>? ->
             if (ar!!.succeeded()) {
                 context.response().end(toJson(ar.result().body()))

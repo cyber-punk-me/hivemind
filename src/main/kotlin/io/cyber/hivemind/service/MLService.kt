@@ -25,7 +25,7 @@ import java.util.HashMap
 
 
 interface MLService {
-    fun train(scriptId: UUID, modelId: UUID, dataId: UUID): RunStatus
+    fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuTrain: Boolean): RunStatus
     fun runData(modelId: UUID, dataId: List<UUID>): RunStatus
     fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>)
 }
@@ -39,23 +39,29 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     //fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
     //fileSystem.copyRecursiveBlocking("$workDir/local/script/$scriptId/data/1", "$workDir/local/model/$modelId/1", true)
 
-    override fun train(scriptId: UUID, modelId: UUID, dataId: UUID): RunStatus {
+    override fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuTrain: Boolean): RunStatus {
         print("training model $modelId from script $scriptId, with data $dataId")
         unzipData(File("$workDir/local/script/$scriptId"), "$workDir/local/script/$scriptId/script.zip")
-        val trainContainerId = trainInContainer(scriptId, modelId, dataId, TF_CPU_PY3)
+        val trainContainerId = trainInContainer(scriptId, modelId, dataId, gpuTrain)
         docker.waitContainer(trainContainerId)
         runServableContainer(scriptId, modelId, dataId)
         return RunStatus(RunState.RUNNING, Date(), null, scriptId, modelId, dataId)
     }
 
-    private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, baseImage: String): String {
+    private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, nvidiaRuntime: Boolean): String {
         //fileSystem.deleteRecursiveBlocking("$workDir/local/model/$modelId/1", true)
         //fileSystem.deleteRecursiveBlocking("$workDir/local/script/$scriptId/data", true)
         fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
-        val hostConfig: HostConfig =
-                HostConfig.builder()
+        val baseImage: String = if (nvidiaRuntime) TF_NVIDIA_PY3 else TF_CPU_PY3
+        val hostConfBuilder = HostConfig.builder()
                         .binds("$workDir/local/script/$scriptId:/script-1/", "$workDir/local/data/$dataId:/data", "$workDir/local/model/$modelId:/model")
-                        .build()
+
+        if (nvidiaRuntime) {
+            hostConfBuilder.runtime(NVIDIA_RUNTIME)
+        }
+
+        val hostConfig: HostConfig = hostConfBuilder.build()
+
         docker.pull(baseImage)
         val containerConfig: ContainerConfig = ContainerConfig.builder().workingDir("$workDir/local/script/$scriptId")
                 .image(baseImage)
@@ -75,7 +81,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val creation: ContainerCreation = docker.createContainer(containerConfig)
         val id = creation.id()
         docker.startContainer(id)
-        return id
+        return id!!
     }
 
     private fun runServableContainer(scriptId: UUID, modelId: UUID, dataId: UUID): RunStatus {
@@ -146,6 +152,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
     companion object {
         val workDir = System.getProperty("user.dir")
+        const val NVIDIA_RUNTIME = "nvidia"
         const val TF_NVIDIA_PY3 = "tensorflow/tensorflow:latest-gpu-py3"
         const val TF_CPU_PY3 = "tensorflow/tensorflow:latest-py3"
         const val TF_SERVING = "tensorflow/serving:latest"

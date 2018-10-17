@@ -7,10 +7,11 @@ Hivemind is written in Kotlin with minimalistic dependencies, allowing you to us
 ## STATUS pre-alpha; implementing swagger schema : https://app.swaggerhub.com/apis/kyr7/hivemind/0.0.1
 
 ## Prototype instructions
-1. install docker https://www.docker.com/ 
-2. docker client should work without sudo https://docs.docker.com/install/linux/linux-postinstall/
-3. see examples folder for API referebce.
-4. execute ./gradlew run
+1. install docker https://www.docker.com/
+    * optionally install nvidia docker runtime https://github.com/NVIDIA/nvidia-docker
+1. docker client should work without sudo https://docs.docker.com/install/linux/linux-postinstall/
+1. see examples folder for API referebce.
+1. execute ./gradlew run
 
 check training status with `docker ps`  for now.
 

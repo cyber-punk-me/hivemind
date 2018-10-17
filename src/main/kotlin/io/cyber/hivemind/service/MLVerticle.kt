@@ -36,7 +36,9 @@ class MLVerticle : AbstractVerticle() {
                     }
                     Verb.POST -> {
                         val model = fromJson(command.buffer!!, Model::class.java)
-                        message.reply(mLService.train(model.scriptId, modelId, model.dataId))
+                        val gpuHeader = message.headers()["gpu"]
+                        val gpuTrain = gpuHeader?.toBoolean() ?: false
+                        message.reply(mLService.train(model.scriptId, modelId, model.dataId, gpuTrain))
                     }
                     else -> {
                     }
