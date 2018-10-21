@@ -18,7 +18,6 @@ import com.spotify.docker.client.messages.ContainerConfig
 import com.spotify.docker.client.messages.ContainerCreation
 import com.spotify.docker.client.messages.HostConfig
 import com.spotify.docker.client.messages.PortBinding
-import io.cyber.hivemind.util.unzipData
 import io.vertx.core.file.FileSystem
 import java.util.ArrayList
 import java.util.HashMap
@@ -35,13 +34,9 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     val client = WebClient.create(vertx)
     val docker: DockerClient = DefaultDockerClient("unix:///var/run/docker.sock")
     val fileSystem: FileSystem = vertx.fileSystem()
-    //
-    //fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
-    //fileSystem.copyRecursiveBlocking("$workDir/local/script/$scriptId/data/1", "$workDir/local/model/$modelId/1", true)
 
     override fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuTrain: Boolean): RunStatus {
         print("training model $modelId from script $scriptId, with data $dataId")
-        unzipData(File("$workDir/local/script/$scriptId"), "$workDir/local/script/$scriptId/script.zip")
         val trainContainerId = trainInContainer(scriptId, modelId, dataId, gpuTrain)
         docker.waitContainer(trainContainerId)
         runServableContainer(scriptId, modelId, dataId)
@@ -49,12 +44,10 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, nvidiaRuntime: Boolean): String {
-        //fileSystem.deleteRecursiveBlocking("$workDir/local/model/$modelId/1", true)
-        //fileSystem.deleteRecursiveBlocking("$workDir/local/script/$scriptId/data", true)
         fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
         val baseImage: String = if (nvidiaRuntime) TF_NVIDIA_PY3 else TF_CPU_PY3
         val hostConfBuilder = HostConfig.builder()
-                        .binds("$workDir/local/script/$scriptId:/script-1/", "$workDir/local/data/$dataId:/data", "$workDir/local/model/$modelId:/model")
+                        .binds("$workDir/local/script/$scriptId/src:/src", "$workDir/local/data/$dataId:/data", "$workDir/local/model/$modelId:/tf_export")
 
         if (nvidiaRuntime) {
             hostConfBuilder.runtime(NVIDIA_RUNTIME)
@@ -73,10 +66,8 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
                         "apt-get install -y python3-pip &&" +
                         "apt-get install -y git &&" +
                         "python3 -m pip install numpy sklearn myo-python &&" +
-                        "cd /script-1 && ls && " +
-                        //"rm -r data/tensorflow_sessions && " +
-                        "python3 train.py && " +
-                        "cp -r data/1 /model")
+                        "cd /src && ls && " +
+                        "python3 train.py")
                 .build()
         val creation: ContainerCreation = docker.createContainer(containerConfig)
         val id = creation.id()

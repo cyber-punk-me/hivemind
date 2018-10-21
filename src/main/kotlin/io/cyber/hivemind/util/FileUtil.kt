@@ -67,13 +67,19 @@ fun isInteger(s: String): Boolean {
 
 fun unzipData(directory: File, zipFileName: String) {
     BufferedInputStream(FileInputStream(zipFileName)).use { `is` ->
+        var firstEntryRead = true
+        var rootEntryDir : String? = null
         ZipInputStream(BufferedInputStream(`is`)).use { zis ->
             var entry: ZipEntry? = zis.nextEntry
             while (entry != null) {
                 val entryName = entry.name
                 if (!entryName.isEmpty()) {
                     if (entry.isDirectory) {
-                        if (!File(directory, entryName).mkdir()) {
+                        if (firstEntryRead) {
+                            rootEntryDir = entry.name
+                        }
+                        val resDirName = if (rootEntryDir == null) entryName else entryName.substring(rootEntryDir!!.length)
+                        if (!resDirName.isEmpty() && !File(directory, resDirName).mkdir()) {
                             print("Failed to create directory")
                             return
                         }
@@ -81,7 +87,8 @@ fun unzipData(directory: File, zipFileName: String) {
                         val buff = ByteArray(bufferSize)
                         var dest: BufferedOutputStream? = null
                         try {
-                            val fos = FileOutputStream(File(directory, entryName))
+                            val resFileNme = if (rootEntryDir == null) entryName else entryName.substring(rootEntryDir!!.length)
+                            val fos = FileOutputStream(File(directory, resFileNme))
                             dest = BufferedOutputStream(fos, bufferSize)
                             var count = zis.read(buff, 0, bufferSize)
                             while (count != -1) {
@@ -95,6 +102,7 @@ fun unzipData(directory: File, zipFileName: String) {
                     }
                 }
                 entry = zis.nextEntry
+                firstEntryRead = false
             }
         }
     }

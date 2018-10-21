@@ -67,6 +67,7 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
             val path = "$dir/script.zip"
             fs.writeFile(path, file) { ar ->
                 unzipData(File("${MLServiceImpl.workDir}/local/script/$id"), "${MLServiceImpl.workDir}/local/script/$id/script.zip")
+                //fs.deleteBlocking("$dir/script.zip")
                 handler.handle(ar.map { _ -> Meta(id, path, null, path, null, System.currentTimeMillis(), null) })
             }
         }
