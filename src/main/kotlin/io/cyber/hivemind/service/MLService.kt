@@ -115,7 +115,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     override fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>) {
-        client.post(Companion.TF_SERVABlE_PORT, Companion.TF_SERVABlE_HOST, Companion.TF_SERVABlE_URI)
+        client.post(TF_SERVABlE_PORT, TF_SERVABlE_HOST, "$TF_SERVABlE_URI/$modelId:predict")
                 .sendJsonObject(json) { ar ->
                     run {
                         handler.handle(ar.map { http -> http.bodyAsJsonObject() })
@@ -149,7 +149,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         const val TF_SERVING = "tensorflow/serving:latest"
         const val TF_SERVABlE_HOST = "localhost"
         const val TF_SERVABlE_PORT = 8501
-        const val TF_SERVABlE_URI = "/v1/models/half_plus_three:predict"
+        const val TF_SERVABlE_URI = "/v1/models"
     }
 
 }
