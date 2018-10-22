@@ -1,6 +1,5 @@
 package io.cyber.hivemind.util
 
-import io.cyber.hivemind.service.MLServiceImpl
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpHeaders
@@ -47,13 +46,20 @@ fun downloadFile(routingContext: RoutingContext, fileName : String) {
           .sendFile(fileName)
 }
 
-fun getNextFileName(files : List<String>?) : String {
-    if (files == null || files.isEmpty()) return "0"
-    val maxFile : Int? = files.map { f -> f.split(File.separator).last() }. filter { f -> isInteger(f) }.map { s -> Integer.parseInt(s) }.max()
+fun getNextFileName(files : List<String>?, extension: String?) : String {
+    val extRes = extension?.let { ".$extension" } ?: ""
+    val defaultName = "0$extRes"
+    if (files == null || files.isEmpty()) return defaultName
+    val maxFile : Int? = files.map { f -> f.split(File.separator).last() }.map{s -> s.cutEtension()}. filter { f -> isInteger(f) }.map { s -> Integer.parseInt(s) }.max()
     return when {
-        maxFile != null -> "" + (maxFile + 1)
-        else -> "0"
+        maxFile != null -> "" + (maxFile + 1) + extRes
+        else -> defaultName
     }
+}
+
+private fun String.cutEtension(): String {
+    if (!contains(".")) return this
+    return split(".")[0]
 }
 
 fun isInteger(s: String): Boolean {

@@ -5,6 +5,7 @@ import io.cyber.hivemind.Meta
 import io.cyber.hivemind.Type
 import io.cyber.hivemind.Verb
 import io.cyber.hivemind.service.FileVerticle
+import io.cyber.hivemind.util.addNotNullHeader
 import io.cyber.hivemind.util.downloadFile
 import io.cyber.hivemind.util.toJson
 import io.vertx.core.AsyncResult
@@ -23,7 +24,6 @@ class DataController(val vertx: Vertx) {
         opts.addHeader("id", dataId)
         vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<String>>? ->
             if (ar!!.succeeded()) {
-                //download file by the name provided by the FileService
                 downloadFile(context, ar.result().body())
             } else {
                 ar.cause().printStackTrace()
@@ -33,19 +33,20 @@ class DataController(val vertx: Vertx) {
     }
 
     fun postData(context: RoutingContext) {
-            val cmd = Command(Type.DATA, Verb.POST, context.body)
-            val opts = DeliveryOptions()
-            val dataId = context.request().getParam("dataId")
-            opts.addHeader("id", dataId)
-            vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<Meta>>? ->
-                if (ar!!.succeeded()) {
-                    //write the buffer returned from FileVerticle
-                    context.response().end(toJson(ar.result().body()))
-                } else {
-                    ar.cause().printStackTrace()
-                }
-                context.response().close()
+        val cmd = Command(Type.DATA, Verb.POST, context.body)
+        val opts = DeliveryOptions()
+        val dataId = context.request().getParam("dataId")
+        val ext = context.request().getParam("ext")
+        opts.addHeader("id", dataId)
+        opts.addNotNullHeader("ext", ext)
+        vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<Meta>>? ->
+            if (ar!!.succeeded()) {
+                context.response().end(toJson(ar.result().body()))
+            } else {
+                ar.cause().printStackTrace()
             }
+            context.response().close()
+        }
     }
 
     fun deleteData(context: RoutingContext) {

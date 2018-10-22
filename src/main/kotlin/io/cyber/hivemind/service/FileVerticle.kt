@@ -27,34 +27,31 @@ class FileVerticle : AbstractVerticle() {
 
     override fun start(startFuture: Future<Void>) {
         consumer = vertx.eventBus().consumer<Command>(FileVerticle::class.java.name) { message ->
-            val metaHeader = message.headers()["meta"]
             val idHeader = message.headers()["id"]
-
-            if (metaHeader != null || idHeader != null) {
-                val command = message.body()
-                when (command.verb) {
-                    Verb.GET -> {
-                        val id = UUID.fromString(idHeader)
-                        message.reply(fileService?.getName(command.type, id!!))
-                    }
-                    Verb.POST -> {
-                        val id = UUID.fromString(idHeader)
-                        //input meta handler
-                        fileService?.store(command.type, id!!, command.buffer!!,
-                                Handler { metaRes: AsyncResult<Meta> ->
-                                    message.reply(metaRes.result())
-                                })
-                    }
-                    Verb.DELETE -> {
-                        val id = idHeader?.let { UUID.fromString(idHeader) }
-                        message.reply(fileService?.delete(command.type, id!!))
-                    }
-                    Verb.FIND -> {
-                        val meta = metaHeader?.let { fromJson(metaHeader, Meta::class.java) }
-                        message.reply(fileService?.find(command.type, meta!!))
-                    }
-                    else -> {
-                    }
+            val command = message.body()
+            when (command.verb) {
+                Verb.GET -> {
+                    val id = UUID.fromString(idHeader)
+                    message.reply(fileService?.getName(command.type, id!!))
+                }
+                Verb.POST -> {
+                    val id = UUID.fromString(idHeader)
+                    val extension = message.headers()["ext"]
+                    fileService?.store(command.type, id!!, command.buffer!!, extension,
+                            Handler { metaRes: AsyncResult<Meta> ->
+                                message.reply(metaRes.result())
+                            })
+                }
+                Verb.DELETE -> {
+                    val id = UUID.fromString(idHeader)
+                    message.reply(fileService?.delete(command.type, id!!))
+                }
+                Verb.FIND -> {
+                    val metaHeader = message.headers()["meta"]
+                    val meta = fromJson(metaHeader, Meta::class.java)
+                    message.reply(fileService?.find(command.type, meta))
+                }
+                else -> {
                 }
             }
         }

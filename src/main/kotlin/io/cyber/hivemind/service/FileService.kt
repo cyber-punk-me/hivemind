@@ -19,7 +19,7 @@ import java.util.*
  */
 interface FileService {
     fun getName(type: Type, id: UUID): String
-    fun store(type: Type, id: UUID, uploadedFile: Buffer, handler: Handler<AsyncResult<Meta>>)
+    fun store(type: Type, id: UUID, uploadedFile: Buffer, extension: String?, handler: Handler<AsyncResult<Meta>>)
     fun delete(type: Type, id: UUID): String
     fun find(type: Type, meta: Meta): List<Meta>
 }
@@ -36,7 +36,7 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
 
     private val fs: FileSystem = vertx.fileSystem()
 
-    override fun store(type: Type, id: UUID, uploadedFile: Buffer, handler: Handler<AsyncResult<Meta>>) {
+    override fun store(type: Type, id: UUID, uploadedFile: Buffer, extension: String?, handler: Handler<AsyncResult<Meta>>) {
         val baseDir = when (type) {
             Type.DATA -> DATA_ROOT
             Type.MODEL -> MODEL_ROOT
@@ -46,18 +46,18 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
         fs.readDir(dir) { event: AsyncResult<MutableList<String>>? ->
             if (null == event?.result()) {
                 fs.mkdir(dir) {
-                    storeBuffer(type, id, dir, uploadedFile, handler)
+                    storeBuffer(type, id, dir, uploadedFile, extension, handler)
                 }
             } else {
-                storeBuffer(type, id, dir, uploadedFile, handler)
+                storeBuffer(type, id, dir, uploadedFile, extension, handler)
             }
         }
     }
 
-    private fun storeBuffer(type: Type, id: UUID, dir: String, file: Buffer, handler: Handler<AsyncResult<Meta>>) {
+    private fun storeBuffer(type: Type, id: UUID, dir: String, file: Buffer, extension: String?, handler: Handler<AsyncResult<Meta>>) {
         if (Type.DATA == type) {
             fs.readDir(dir) { event: AsyncResult<MutableList<String>>? ->
-                val fileName = getNextFileName(event?.result())
+                val fileName = getNextFileName(event?.result(), extension)
                 val path = "$dir/$fileName"
                 fs.writeFile(path, file) { ar ->
                     handler.handle(ar.map { _ -> Meta(id, fileName, null, path, null, System.currentTimeMillis(), null) })
@@ -67,7 +67,6 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
             val path = "$dir/script.zip"
             fs.writeFile(path, file) { ar ->
                 unzipData(File("${MLServiceImpl.workDir}/local/script/$id"), "${MLServiceImpl.workDir}/local/script/$id/script.zip")
-                //fs.deleteBlocking("$dir/script.zip")
                 handler.handle(ar.map { _ -> Meta(id, path, null, path, null, System.currentTimeMillis(), null) })
             }
         }

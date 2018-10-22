@@ -2,6 +2,7 @@ package io.cyber.hivemind.net
 
 import io.cyber.hivemind.*
 import io.cyber.hivemind.service.MLVerticle
+import io.cyber.hivemind.util.addNotNullHeader
 import io.cyber.hivemind.util.toJson
 import io.vertx.core.AsyncResult
 import io.vertx.core.Vertx
@@ -30,9 +31,7 @@ class ModelController(val vertx: Vertx) {
         val cmd = Command(Type.MODEL, Verb.POST, context.body)
         val opts = DeliveryOptions()
         opts.addHeader("modelId", modelId)
-        if (gpu != null) {
-            opts.addHeader("gpu", gpu)
-        }
+        opts.addNotNullHeader("gpu", gpu)
         vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<RunStatus>>? ->
             if (ar!!.succeeded()) {
                 context.response().end(toJson(ar.result().body()))
