@@ -2,6 +2,7 @@ package io.cyber.hivemind
 
 import io.vertx.core.buffer.Buffer
 import java.util.*
+import kotlin.collections.ArrayList
 
 /**
  * Created by kyr7 on 30/06/2018.
@@ -29,3 +30,4 @@ data class Command(val type: Type, val verb: Verb, val buffer: Buffer? = null)
 data class RunStatus(val state: RunState, val startTime: Date, val endTime: Date?,
                      val scriptId: UUID, val modelId: UUID, val dataId:UUID)
 
+class MetaList : ArrayList<Meta>()

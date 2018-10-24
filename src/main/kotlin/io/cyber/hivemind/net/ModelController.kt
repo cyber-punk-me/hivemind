@@ -32,8 +32,8 @@ class ModelController(val vertx: Vertx) {
         val opts = DeliveryOptions()
         opts.addHeader("modelId", modelId)
         opts.addNotNullHeader("gpu", gpu)
-        vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<RunStatus>>? ->
-            if (ar!!.succeeded()) {
+        vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<RunStatus>> ->
+            if (ar.succeeded()) {
                 context.response().end(toJson(ar.result().body()))
             } else {
                 ar.cause().printStackTrace()
@@ -47,7 +47,15 @@ class ModelController(val vertx: Vertx) {
     }
 
     fun findModel(context: RoutingContext) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val cmd = Command(Type.MODEL, Verb.FIND, context.body)
+        vertx.eventBus().send(MLVerticle::class.java.name, cmd) { ar: AsyncResult<Message<List<Meta>>> ->
+            if (ar.succeeded()) {
+                context.response().end(toJson(ar.result().body()))
+            } else {
+                ar.cause().printStackTrace()
+                context.response().end(ar.toString())
+            }
+        }
     }
 
     fun applyModelToData(context: RoutingContext) {

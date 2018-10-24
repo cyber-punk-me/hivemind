@@ -18,6 +18,8 @@ import com.spotify.docker.client.messages.ContainerConfig
 import com.spotify.docker.client.messages.ContainerCreation
 import com.spotify.docker.client.messages.HostConfig
 import com.spotify.docker.client.messages.PortBinding
+import io.cyber.hivemind.Meta
+import io.cyber.hivemind.MetaList
 import io.vertx.core.file.FileSystem
 import java.util.ArrayList
 import java.util.HashMap
@@ -27,6 +29,7 @@ interface MLService {
     fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuTrain: Boolean): RunStatus
     fun runData(modelId: UUID, dataId: List<UUID>): RunStatus
     fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>)
+    fun find(meta: Meta): List<Meta>
 }
 
 class MLServiceImpl(val vertx: Vertx) : MLService {
@@ -35,19 +38,29 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     val docker: DockerClient = DefaultDockerClient("unix:///var/run/docker.sock")
     val fileSystem: FileSystem = vertx.fileSystem()
 
+    override fun find(meta: Meta): MetaList {
+        return MetaList().also { it.add(Meta(UUID.randomUUID(), "smth", null, null, null, 0, null)) }
+    }
+
     override fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuTrain: Boolean): RunStatus {
         print("training model $modelId from script $scriptId, with data $dataId")
-        val trainContainerId = trainInContainer(scriptId, modelId, dataId, gpuTrain)
-        docker.waitContainer(trainContainerId)
-        runServableContainer(scriptId, modelId, dataId)
+        Thread {
+            val trainContainerId = trainInContainer(scriptId, modelId, dataId, gpuTrain)
+            docker.waitContainer(trainContainerId)
+            runServableContainer(scriptId, modelId, dataId)
+        }.start()
         return RunStatus(RunState.RUNNING, Date(), null, scriptId, modelId, dataId)
     }
 
     private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, nvidiaRuntime: Boolean): String {
         fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
+        fileSystem.mkdirsBlocking("$workDir/local/tf_session/$modelId/1")
         val baseImage: String = if (nvidiaRuntime) TF_NVIDIA_PY3 else TF_CPU_PY3
         val hostConfBuilder = HostConfig.builder()
-                        .binds("$workDir/local/script/$scriptId/src:/src", "$workDir/local/data/$dataId:/data", "$workDir/local/model/$modelId:/tf_export")
+                        .binds("$workDir/local/script/$scriptId/src:/src",
+                                "$workDir/local/data/$dataId:/data",
+                                "$workDir/local/tf_session/$modelId:/tf_session",
+                                "$workDir/local/model/$modelId:/tf_export")
 
         if (nvidiaRuntime) {
             hostConfBuilder.runtime(NVIDIA_RUNTIME)
@@ -59,7 +72,8 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val containerConfig: ContainerConfig = ContainerConfig.builder().workingDir("$workDir/local/script/$scriptId")
                 .image(baseImage)
                 .labels(hashMapOf(
-                        "service" to "training"
+                        "service" to "training",
+                        "modelId" to modelId.toString()
                 ))
                 .hostConfig(hostConfig)
                 .cmd("bash", "-c", "apt-get update && " +
@@ -96,7 +110,8 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val containerConfig: ContainerConfig = ContainerConfig.builder()
                 .image(TF_SERVING)
                 .labels(hashMapOf(
-                        "service" to "serving"
+                        "service" to "serving",
+                        "modelId" to modelId.toString()
                 ))
                 .exposedPorts(HashSet(ports.asList()))
                 .env("MODEL_NAME=$modelId")
@@ -107,7 +122,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val id = creation.id()
         //val info = docker.inspectContainer(id)
         docker.startContainer(id)
-        return RunStatus(RunState.RUNNING, Date(), null, scriptId, modelId, dataId)
+        return RunStatus(RunState.NEW, Date(), null, scriptId, modelId, dataId)
     }
 
     override fun runData(modelId: UUID, dataId: List<UUID>): RunStatus {

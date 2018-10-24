@@ -186,3 +186,34 @@ class MetaCodec : MessageCodec<Meta, Meta> {
     }
 
 }
+
+class MetaListCodec : MessageCodec<MetaList, MetaList> {
+
+    override fun decodeFromWire(position: Int, buffer: Buffer): MetaList {
+        val length = buffer.getInt(position)
+        val jsonStr = buffer.getString(position + 4, position + 4 + length)
+        return fromJson(jsonStr, MetaList::class.java)
+    }
+
+    override fun encodeToWire(buffer: Buffer, s: MetaList) {
+        buffer.appendString(toJson(s))
+    }
+
+    override fun transform(customMessage: MetaList): MetaList {
+        // If a message is sent *locally* across the event bus.
+        // This example sends message just as is
+        return customMessage
+    }
+
+    override fun name(): String {
+        // Each codec must have a unique name.
+        // This is used to identify a codec when sending a message and for unregistering codecs.
+        return this.javaClass.simpleName
+    }
+
+    override fun systemCodecID(): Byte {
+        // Always -1
+        return -1
+    }
+
+}
