@@ -3,7 +3,6 @@ package io.cyber.hivemind.service
 import com.spotify.docker.client.DefaultDockerClient
 import com.spotify.docker.client.DockerClient
 import io.cyber.hivemind.RunState
-import io.cyber.hivemind.RunStatus
 import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
 import io.vertx.core.json.JsonObject
@@ -26,10 +25,10 @@ import java.util.HashMap
 
 
 interface MLService {
-    fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuTrain: Boolean): RunStatus
-    fun runData(modelId: UUID, dataId: List<UUID>): RunStatus
+    fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuTrain: Boolean): Meta
+    fun runData(modelId: UUID, dataId: List<UUID>): Meta
     fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>)
-    fun find(meta: Meta): List<Meta>
+    fun find(meta: Meta): MetaList
 }
 
 class MLServiceImpl(val vertx: Vertx) : MLService {
@@ -37,19 +36,33 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     val client = WebClient.create(vertx)
     val docker: DockerClient = DefaultDockerClient("unix:///var/run/docker.sock")
     val fileSystem: FileSystem = vertx.fileSystem()
+    val tempState: Map<UUID, Meta> = HashMap()
 
     override fun find(meta: Meta): MetaList {
-        return MetaList().also { it.add(Meta(UUID.randomUUID(), "smth", null, null, null, 0, null)) }
+        val res = tempState[meta.modelId]
+        if (res != null) {
+            return MetaList().also { it.add(res) }
+        }
+        val containers = docker.listContainers(DockerClient.ListContainersParam.withLabel("modelId", meta.modelId.toString()))
+        if (containers.isEmpty()) {
+            return MetaList()
+        }
+        val container = containers.first()
+        if (container.labels()!!["service"].equals("training")) {
+            return MetaList().also { it.add(Meta(null, meta.modelId, null, RunState.RUNNING, null, null)) }
+        } else {
+            return MetaList().also { it.add(Meta(null, meta.modelId, null, RunState.COMPLETE, null, null)) }
+        }
     }
 
-    override fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuTrain: Boolean): RunStatus {
+    override fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuTrain: Boolean): Meta {
         print("training model $modelId from script $scriptId, with data $dataId")
         Thread {
             val trainContainerId = trainInContainer(scriptId, modelId, dataId, gpuTrain)
             docker.waitContainer(trainContainerId)
             runServableContainer(scriptId, modelId, dataId)
         }.start()
-        return RunStatus(RunState.RUNNING, Date(), null, scriptId, modelId, dataId)
+        return Meta(scriptId, modelId, dataId, RunState.RUNNING, null, null)
     }
 
     private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, nvidiaRuntime: Boolean): String {
@@ -57,10 +70,10 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         fileSystem.mkdirsBlocking("$workDir/local/tf_session/$modelId/1")
         val baseImage: String = if (nvidiaRuntime) TF_NVIDIA_PY3 else TF_CPU_PY3
         val hostConfBuilder = HostConfig.builder()
-                        .binds("$workDir/local/script/$scriptId/src:/src",
-                                "$workDir/local/data/$dataId:/data",
-                                "$workDir/local/tf_session/$modelId:/tf_session",
-                                "$workDir/local/model/$modelId:/tf_export")
+                .binds("$workDir/local/script/$scriptId/src:/src",
+                        "$workDir/local/data/$dataId:/data",
+                        "$workDir/local/tf_session/$modelId:/tf_session",
+                        "$workDir/local/model/$modelId:/tf_export")
 
         if (nvidiaRuntime) {
             hostConfBuilder.runtime(NVIDIA_RUNTIME)
@@ -89,7 +102,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         return id!!
     }
 
-    private fun runServableContainer(scriptId: UUID, modelId: UUID, dataId: UUID): RunStatus {
+    private fun runServableContainer(scriptId: UUID, modelId: UUID, dataId: UUID) {
         docker.pull(TF_SERVING)
 
         // Bind container ports to host ports
@@ -122,10 +135,9 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val id = creation.id()
         //val info = docker.inspectContainer(id)
         docker.startContainer(id)
-        return RunStatus(RunState.NEW, Date(), null, scriptId, modelId, dataId)
     }
 
-    override fun runData(modelId: UUID, dataId: List<UUID>): RunStatus {
+    override fun runData(modelId: UUID, dataId: List<UUID>): Meta {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 

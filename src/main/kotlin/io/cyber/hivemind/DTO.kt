@@ -20,14 +20,11 @@ enum class RunState {
     NEW, RUNNING, COMPLETE, ERROR
 }
 
-data class Meta(val id: UUID?, val name: String?, val note: String?,
-                val path: String?, val error: String?, val time: Long, val tags: List<String>?)
-
-data class Model(val dataId: UUID, val scriptId: UUID, val meta : Meta?)
+data class Model(val dataId: UUID, val scriptId: UUID)
 
 data class Command(val type: Type, val verb: Verb, val buffer: Buffer? = null)
 
-data class RunStatus(val state: RunState, val startTime: Date, val endTime: Date?,
-                     val scriptId: UUID, val modelId: UUID, val dataId:UUID)
+data class Meta(val scriptId: UUID?, val modelId: UUID?, val dataId: UUID?,
+                val state: RunState?, val startTime: Date?, val endTime: Date?)
 
 class MetaList : ArrayList<Meta>()

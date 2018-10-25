@@ -32,7 +32,7 @@ class ModelController(val vertx: Vertx) {
         val opts = DeliveryOptions()
         opts.addHeader("modelId", modelId)
         opts.addNotNullHeader("gpu", gpu)
-        vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<RunStatus>> ->
+        vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<Meta>> ->
             if (ar.succeeded()) {
                 context.response().end(toJson(ar.result().body()))
             } else {

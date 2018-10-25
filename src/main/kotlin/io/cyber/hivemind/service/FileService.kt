@@ -1,6 +1,7 @@
 package io.cyber.hivemind.service
 
 import io.cyber.hivemind.Meta
+import io.cyber.hivemind.MetaList
 import io.cyber.hivemind.Type
 import io.cyber.hivemind.util.getNextFileName
 import io.cyber.hivemind.util.unzipData
@@ -21,7 +22,7 @@ interface FileService {
     fun getName(type: Type, id: UUID): String
     fun store(type: Type, id: UUID, uploadedFile: Buffer, extension: String?, handler: Handler<AsyncResult<Meta>>)
     fun delete(type: Type, id: UUID): String
-    fun find(type: Type, meta: Meta): List<Meta>
+    fun find(type: Type, meta: Meta): MetaList
 }
 
 //todo implement file system watchdog for local dev
@@ -60,14 +61,14 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
                 val fileName = getNextFileName(event?.result(), extension)
                 val path = "$dir/$fileName"
                 fs.writeFile(path, file) { ar ->
-                    handler.handle(ar.map { _ -> Meta(id, fileName, null, path, null, System.currentTimeMillis(), null) })
+                    handler.handle(ar.map { _ -> Meta(null, null, id, null, null, Date()) })
                 }
             }
         } else if (Type.SCRIPT == type) {
             val path = "$dir/script.zip"
             fs.writeFile(path, file) { ar ->
                 unzipData(File("${MLServiceImpl.workDir}/local/script/$id"), "${MLServiceImpl.workDir}/local/script/$id/script.zip")
-                handler.handle(ar.map { _ -> Meta(id, path, null, path, null, System.currentTimeMillis(), null) })
+                handler.handle(ar.map { _ -> Meta(id, null, null, null, null, Date()) })
             }
         }
     }
@@ -76,7 +77,7 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun find(type: Type, meta: Meta): List<Meta> {
+    override fun find(type: Type, meta: Meta): MetaList {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
