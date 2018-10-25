@@ -22,6 +22,7 @@ import io.cyber.hivemind.MetaList
 import io.vertx.core.file.FileSystem
 import java.util.ArrayList
 import java.util.HashMap
+import kotlin.collections.HashSet
 
 
 interface MLService {
@@ -36,7 +37,8 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     val client = WebClient.create(vertx)
     val docker: DockerClient = DefaultDockerClient("unix:///var/run/docker.sock")
     val fileSystem: FileSystem = vertx.fileSystem()
-    val tempState: Map<UUID, Meta> = HashMap()
+    val tempState: MutableMap<UUID, Meta> = HashMap()
+    val killedContainers: MutableSet<String> = HashSet()
 
     override fun find(meta: Meta): MetaList {
         val res = tempState[meta.modelId]
@@ -48,26 +50,42 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
             return MetaList()
         }
         val container = containers.first()
-        if (container.labels()!!["service"].equals("training")) {
-            return MetaList().also { it.add(Meta(null, meta.modelId, null, RunState.RUNNING, null, null)) }
+        return if (container.labels()!!["service"].equals("training")) {
+            MetaList().also { it.add(Meta(null, meta.modelId, null, RunState.RUNNING, null, null)) }
         } else {
-            return MetaList().also { it.add(Meta(null, meta.modelId, null, RunState.COMPLETE, null, null)) }
+            MetaList().also { it.add(Meta(null, meta.modelId, null, RunState.COMPLETE, null, null)) }
         }
     }
 
     override fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuTrain: Boolean): Meta {
         print("training model $modelId from script $scriptId, with data $dataId")
         Thread {
-            val trainContainerId = trainInContainer(scriptId, modelId, dataId, gpuTrain)
-            docker.waitContainer(trainContainerId)
-            runServableContainer(scriptId, modelId, dataId)
+            try {
+                tempState[modelId] = Meta(null, modelId, null, RunState.RUNNING, Date(), null)
+                if (SINGLE_TRAINING) {
+                    removeContainers(modelId)
+                }
+                val trainContainerId = trainInContainer(scriptId, modelId, dataId, gpuTrain)
+                docker.waitContainer(trainContainerId)
+                if (!killedContainers.contains(trainContainerId)) {
+                    runServableContainer(scriptId, modelId, dataId)
+                }
+            } finally {
+                tempState.remove(modelId)
+            }
         }.start()
         return Meta(scriptId, modelId, dataId, RunState.RUNNING, null, null)
     }
 
     private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, nvidiaRuntime: Boolean): String {
         fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
-        fileSystem.mkdirsBlocking("$workDir/local/tf_session/$modelId/1")
+        fileSystem.mkdirsBlocking("$workDir/local/tf_session/$modelId")
+
+        val labels = hashMapOf(
+                "service" to "training",
+                "modelId" to modelId.toString()
+        )
+
         val baseImage: String = if (nvidiaRuntime) TF_NVIDIA_PY3 else TF_CPU_PY3
         val hostConfBuilder = HostConfig.builder()
                 .binds("$workDir/local/script/$scriptId/src:/src",
@@ -84,10 +102,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         docker.pull(baseImage)
         val containerConfig: ContainerConfig = ContainerConfig.builder().workingDir("$workDir/local/script/$scriptId")
                 .image(baseImage)
-                .labels(hashMapOf(
-                        "service" to "training",
-                        "modelId" to modelId.toString()
-                ))
+                .labels(labels)
                 .hostConfig(hostConfig)
                 .cmd("bash", "-c", "apt-get update && " +
                         "apt-get install -y python3-pip &&" +
@@ -103,6 +118,12 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     private fun runServableContainer(scriptId: UUID, modelId: UUID, dataId: UUID) {
+
+        val labels = hashMapOf(
+                "service" to "serving",
+                "modelId" to modelId.toString()
+        )
+
         docker.pull(TF_SERVING)
 
         // Bind container ports to host ports
@@ -122,10 +143,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
         val containerConfig: ContainerConfig = ContainerConfig.builder()
                 .image(TF_SERVING)
-                .labels(hashMapOf(
-                        "service" to "serving",
-                        "modelId" to modelId.toString()
-                ))
+                .labels(labels)
                 .exposedPorts(HashSet(ports.asList()))
                 .env("MODEL_NAME=$modelId")
                 .hostConfig(hostConfig)
@@ -135,6 +153,17 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val id = creation.id()
         //val info = docker.inspectContainer(id)
         docker.startContainer(id)
+    }
+
+    private fun removeContainers(modelId: UUID) {
+        val containers = docker.listContainers(DockerClient.ListContainersParam.withStatusRunning())
+        containers.filter { container ->
+            container.labels()?.containsKey("modelId") ?: false &&
+                    container.labels()?.get("modelId") == modelId.toString()
+         }.forEach { container ->
+            killedContainers.add(container.id())
+            docker.killContainer(container.id())
+        }
     }
 
     override fun runData(modelId: UUID, dataId: List<UUID>): Meta {
@@ -177,6 +206,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         const val TF_SERVABlE_HOST = "localhost"
         const val TF_SERVABlE_PORT = 8501
         const val TF_SERVABlE_URI = "/v1/models"
+        const val SINGLE_TRAINING = true
     }
 
 }
