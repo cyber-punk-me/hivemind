@@ -4,7 +4,7 @@ A very common pattern for ML driven apps and devices could be offloading heavy c
 
 Hivemind is written in Kotlin with minimalistic dependencies, allowing you to use the same language for server and client development.
 
-## STATUS pre-alpha; implementing swagger schema : https://app.swaggerhub.com/apis/kyr7/hivemind/0.0.1
+## STATUS alpha; implementing swagger schema : https://app.swaggerhub.com/apis/kyr7/hivemind/0.0.1
 
 ## Prototype instructions
 1. install docker https://www.docker.com/

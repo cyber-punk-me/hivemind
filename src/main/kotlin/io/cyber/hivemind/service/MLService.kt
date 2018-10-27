@@ -19,6 +19,7 @@ import com.spotify.docker.client.messages.HostConfig
 import com.spotify.docker.client.messages.PortBinding
 import io.cyber.hivemind.Meta
 import io.cyber.hivemind.MetaList
+import io.vertx.core.Future
 import io.vertx.core.file.FileSystem
 import java.util.ArrayList
 import java.util.HashMap
@@ -87,7 +88,9 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
                 if (doTrain) {
                     tempState.remove(modelId)
                     if (MODEL_TRAINING_LOCK) {
-                        isTraining[modelId]!!.set(false)
+                        synchronized(isTraining) {
+                            isTraining[modelId]?.set(false)
+                        }
                     }
                 }
             }
@@ -191,12 +194,17 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     override fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>) {
-        client.post(TF_SERVABlE_PORT, TF_SERVABlE_HOST, "$TF_SERVABlE_URI/$modelId:predict")
-                .sendJsonObject(json) { ar ->
-                    run {
-                        handler.handle(ar.map { http -> http.bodyAsJsonObject() })
+        val modelMeta = find(Meta(null, modelId, null, null, null, null))
+        if (!modelMeta.isEmpty() && RunState.COMPLETE == modelMeta[0].state) {
+            client.post(TF_SERVABlE_PORT, TF_SERVABlE_HOST, "$TF_SERVABlE_URI/$modelId:predict")
+                    .sendJsonObject(json) { ar ->
+                        run {
+                            handler.handle(ar.map { http -> http.bodyAsJsonObject() })
+                        }
                     }
-                }
+        } else {
+            handler.handle(Future.failedFuture("no servable"))
+        }
     }
 
     private fun String.runCommand(workingDir: File): BufferedReader? {

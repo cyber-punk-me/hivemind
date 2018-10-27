@@ -68,10 +68,9 @@ class ModelController(val vertx: Vertx) {
         val opts = DeliveryOptions()
         opts.addHeader("modelId", modelId)
         vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<JsonObject>>? ->
-            if (ar!!.succeeded()) {
+            if (ar!!.succeeded() && ar.result().body() != null) {
                 context.response().end(ar.result().body().encode())
             } else {
-                ar.cause().printStackTrace()
                 context.response().end(ar.toString())
             }
         }
