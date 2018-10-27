@@ -22,6 +22,7 @@ import io.cyber.hivemind.MetaList
 import io.vertx.core.file.FileSystem
 import java.util.ArrayList
 import java.util.HashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.collections.HashSet
 
 
@@ -39,6 +40,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     val fileSystem: FileSystem = vertx.fileSystem()
     val tempState: MutableMap<UUID, Meta> = HashMap()
     val killedContainers: MutableSet<String> = HashSet()
+    val isTraining = HashMap<UUID, AtomicBoolean>()
 
     override fun find(meta: Meta): MetaList {
         val res = tempState[meta.modelId]
@@ -58,20 +60,36 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     override fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuTrain: Boolean): Meta {
-        print("training model $modelId from script $scriptId, with data $dataId")
         Thread {
+            var doTrain = true
             try {
-                tempState[modelId] = Meta(null, modelId, null, RunState.RUNNING, Date(), null)
-                if (SINGLE_TRAINING) {
-                    removeContainers(modelId)
+                if (MODEL_TRAINING_LOCK) {
+                    if (!isTraining.containsKey(modelId)) {
+                        synchronized(isTraining) {
+                            isTraining.putIfAbsent(modelId, AtomicBoolean())
+                        }
+                    }
+                    doTrain = (isTraining[modelId]!!.compareAndSet(false, true))
                 }
-                val trainContainerId = trainInContainer(scriptId, modelId, dataId, gpuTrain)
-                docker.waitContainer(trainContainerId)
-                if (!killedContainers.contains(trainContainerId)) {
-                    runServableContainer(scriptId, modelId, dataId)
+                if (doTrain) {
+                    println("training model $modelId from script $scriptId, with data $dataId")
+                    tempState[modelId] = Meta(null, modelId, null, RunState.RUNNING, Date(), null)
+                    removeContainers(modelId)
+                    val trainContainerId = trainInContainer(scriptId, modelId, dataId, gpuTrain)
+                    docker.waitContainer(trainContainerId)
+                    if (!killedContainers.contains(trainContainerId)) {
+                        runServableContainer(scriptId, modelId, dataId)
+                    }
+                } else {
+                    println("Can't start the training right now. Model $modelId is busy.")
                 }
             } finally {
-                tempState.remove(modelId)
+                if (doTrain) {
+                    tempState.remove(modelId)
+                    if (MODEL_TRAINING_LOCK) {
+                        isTraining[modelId]!!.set(false)
+                    }
+                }
             }
         }.start()
         return Meta(scriptId, modelId, dataId, RunState.RUNNING, null, null)
@@ -117,7 +135,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         return id!!
     }
 
-    private fun runServableContainer(scriptId: UUID, modelId: UUID, dataId: UUID) {
+    private fun runServableContainer(scriptId: UUID, modelId: UUID, dataId: UUID): String {
 
         val labels = hashMapOf(
                 "service" to "serving",
@@ -153,6 +171,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val id = creation.id()
         //val info = docker.inspectContainer(id)
         docker.startContainer(id)
+        return id!!
     }
 
     private fun removeContainers(modelId: UUID) {
@@ -160,9 +179,10 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         containers.filter { container ->
             container.labels()?.containsKey("modelId") ?: false &&
                     container.labels()?.get("modelId") == modelId.toString()
-         }.forEach { container ->
+        }.forEach { container ->
             killedContainers.add(container.id())
             docker.killContainer(container.id())
+            docker.removeContainer(container.id())
         }
     }
 
@@ -206,7 +226,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         const val TF_SERVABlE_HOST = "localhost"
         const val TF_SERVABlE_PORT = 8501
         const val TF_SERVABlE_URI = "/v1/models"
-        const val SINGLE_TRAINING = true
+        const val MODEL_TRAINING_LOCK = true
     }
 
 }
