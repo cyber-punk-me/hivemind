@@ -6,6 +6,7 @@ build/
 out/
 local/data
 !local/data/init
+!local/data/46ffdf66-1941-4a6a-928a-ec7c8d4ec24a/*.csv
 local/script
 !local/script/init
 local/model
