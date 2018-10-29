@@ -1,11 +1,8 @@
 package io.cyber.hivemind.util
 
-import io.vertx.core.Vertx
-import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpHeaders
 import io.vertx.ext.web.RoutingContext
 import java.io.*
-import java.net.URLDecoder
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
@@ -16,28 +13,7 @@ import java.util.zip.ZipInputStream
  * Time: 21:26
  */
 
-val bufferSize = 4096
-
-fun uploadFile(routingContext : RoutingContext, vertx : Vertx) : Buffer? {
-    val fileUploadSet = routingContext.fileUploads()
-    val fileUploadIterator = fileUploadSet.iterator()
-    while (fileUploadIterator.hasNext()) {
-        val fileUpload = fileUploadIterator.next()
-
-        // To get the uploaded file do
-        val uploadedFile = vertx.fileSystem().readFileBlocking(fileUpload.uploadedFileName())
-
-        // Uploaded File Name
-        try {
-            val fileName = URLDecoder.decode(fileUpload.fileName(), "UTF-8")
-        } catch (e: UnsupportedEncodingException) {
-            e.printStackTrace()
-        }
-
-        return uploadedFile
-    }
-    return null
-}
+const val BUFFER_SIZE = 4096
 
 fun downloadFile(routingContext: RoutingContext, fileName : String) {
     routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/zip")
@@ -90,16 +66,16 @@ fun unzipData(directory: File, zipFileName: String) {
                             return
                         }
                     } else {
-                        val buff = ByteArray(bufferSize)
+                        val buff = ByteArray(BUFFER_SIZE)
                         var dest: BufferedOutputStream? = null
                         try {
                             val resFileNme = if (rootEntryDir == null) entryName else entryName.substring(rootEntryDir!!.length)
                             val fos = FileOutputStream(File(directory, resFileNme))
-                            dest = BufferedOutputStream(fos, bufferSize)
-                            var count = zis.read(buff, 0, bufferSize)
+                            dest = BufferedOutputStream(fos, BUFFER_SIZE)
+                            var count = zis.read(buff, 0, BUFFER_SIZE)
                             while (count != -1) {
                                 dest.write(buff, 0, count)
-                                count = zis.read(buff, 0, bufferSize)
+                                count = zis.read(buff, 0, BUFFER_SIZE)
                             }
                             dest.flush()
                         } finally {

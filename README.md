@@ -6,14 +6,16 @@ Hivemind is written in Kotlin with minimalistic dependencies, allowing you to us
 
 ## STATUS alpha; implementing swagger schema : https://app.swaggerhub.com/apis/kyr7/hivemind/0.0.1
 
-## Prototype instructions
+## Running
 1. install docker https://www.docker.com/
     * optionally install nvidia docker runtime https://github.com/NVIDIA/nvidia-docker
-1. docker client should work without sudo https://docs.docker.com/install/linux/linux-postinstall/
+    * recommended to `docker pull` : 
+       * tensorflow/serving:latest
+       * tensorflow/tensorflow:latest-gpu-py3 `OR` tensorflow/tensorflow:latest-py3
+       * if you don't pull these images manually, they will have to be pulled before learning automatically, which is rather slow a.t.m.
+1. docker client must be set up to work without `sudo` https://docs.docker.com/install/linux/linux-postinstall/
 1. see examples folder for API referebce.
-1. execute ./gradlew run
-
-check training status with `docker ps`  for now.
+1. execute `./gradlew run` to start
 
 ## License
 

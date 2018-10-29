@@ -4,6 +4,7 @@ import io.cyber.hivemind.Command
 import io.cyber.hivemind.Meta
 import io.cyber.hivemind.Type
 import io.cyber.hivemind.Verb
+import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.service.FileVerticle
 import io.cyber.hivemind.util.toJson
 import io.vertx.core.AsyncResult
@@ -14,7 +15,6 @@ import io.vertx.ext.web.RoutingContext
 
 class ScriptController(val vertx: Vertx) {
     fun getScript(routingContext: RoutingContext) {
-        val scriptId = routingContext.request().getParam("scriptId")
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
@@ -24,8 +24,8 @@ class ScriptController(val vertx: Vertx) {
         val file = vertx.fileSystem().readFileBlocking(upload.uploadedFileName())
         val cmd = Command(Type.SCRIPT, Verb.POST, file)
         val opts = DeliveryOptions()
-        val scriptId = context.request().getParam("scriptId")
-        opts.addHeader("id", scriptId)
+        val scriptId = context.request().getParam(SCRIPT_ID)
+        opts.addHeader(ID, scriptId)
         vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<Meta>>? ->
             if (ar!!.succeeded()) {
                 //write the buffer returned from FileVerticle

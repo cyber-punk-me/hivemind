@@ -1,6 +1,7 @@
 package io.cyber.hivemind.net
 
 import io.cyber.hivemind.*
+import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.service.MLVerticle
 import io.cyber.hivemind.util.addNotNullHeader
 import io.cyber.hivemind.util.toJson
@@ -26,12 +27,14 @@ class ModelController(val vertx: Vertx) {
      * Start training process
      */
     fun postModel(context: RoutingContext) {
-        val modelId = context.request().getParam("modelId")
-        val gpu = context.request().getParam("gpu")
+        val modelId = context.request().getParam(MODEL_ID)
+        val gpu = context.request().getParam(GPU)
+        val dockerPull = context.request().getParam(DOCKER_PULL)
         val cmd = Command(Type.MODEL, Verb.POST, context.body)
         val opts = DeliveryOptions()
-        opts.addHeader("modelId", modelId)
-        opts.addNotNullHeader("gpu", gpu)
+        opts.addHeader(MODEL_ID, modelId)
+        opts.addNotNullHeader(GPU, gpu)
+        opts.addNotNullHeader(DOCKER_PULL, dockerPull)
         vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<Meta>> ->
             if (ar.succeeded()) {
                 context.response().end(toJson(ar.result().body()))
@@ -63,10 +66,10 @@ class ModelController(val vertx: Vertx) {
     }
 
     fun applyModelToInput(context: RoutingContext) {
-        val modelId = context.request().getParam("modelId")
+        val modelId = context.request().getParam(MODEL_ID)
         val cmd = Command(Type.MODEL, Verb.APPLY, context.body)
         val opts = DeliveryOptions()
-        opts.addHeader("modelId", modelId)
+        opts.addHeader(MODEL_ID, modelId)
         vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<JsonObject>>? ->
             if (ar!!.succeeded() && ar.result().body() != null) {
                 context.response().end(ar.result().body().encode())

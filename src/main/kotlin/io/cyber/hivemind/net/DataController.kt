@@ -4,6 +4,7 @@ import io.cyber.hivemind.Command
 import io.cyber.hivemind.Meta
 import io.cyber.hivemind.Type
 import io.cyber.hivemind.Verb
+import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.service.FileVerticle
 import io.cyber.hivemind.util.addNotNullHeader
 import io.cyber.hivemind.util.downloadFile
@@ -18,10 +19,10 @@ import io.vertx.ext.web.RoutingContext
 class DataController(val vertx: Vertx) {
 
     fun getData(context: RoutingContext) {
-        val dataId = context.request().getParam("dataId")
+        val dataId = context.request().getParam(DATA_ID)
         val cmd = Command(Type.DATA, Verb.GET)
         val opts = DeliveryOptions()
-        opts.addHeader("id", dataId)
+        opts.addHeader(ID, dataId)
         vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<String>>? ->
             if (ar!!.succeeded()) {
                 downloadFile(context, ar.result().body())
@@ -35,10 +36,10 @@ class DataController(val vertx: Vertx) {
     fun postData(context: RoutingContext) {
         val cmd = Command(Type.DATA, Verb.POST, context.body)
         val opts = DeliveryOptions()
-        val dataId = context.request().getParam("dataId")
-        val ext = context.request().getParam("ext")
-        opts.addHeader("id", dataId)
-        opts.addNotNullHeader("ext", ext)
+        val dataId = context.request().getParam(DATA_ID)
+        val ext = context.request().getParam(EXT)
+        opts.addHeader(ID, dataId)
+        opts.addNotNullHeader(EXT, ext)
         vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<Meta>>? ->
             if (ar!!.succeeded()) {
                 context.response().end(toJson(ar.result().body()))

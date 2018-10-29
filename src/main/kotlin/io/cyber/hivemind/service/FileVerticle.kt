@@ -1,12 +1,12 @@
 package io.cyber.hivemind.service
 
 import io.cyber.hivemind.Command
+import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.Meta
 import io.cyber.hivemind.Verb
 import io.cyber.hivemind.util.fromJson
 import io.vertx.core.*
 import io.vertx.core.eventbus.MessageConsumer
-import io.vertx.core.json.JsonObject
 import java.util.*
 
 /**
@@ -27,7 +27,7 @@ class FileVerticle : AbstractVerticle() {
 
     override fun start(startFuture: Future<Void>) {
         consumer = vertx.eventBus().consumer<Command>(FileVerticle::class.java.name) { message ->
-            val idHeader = message.headers()["id"]
+            val idHeader = message.headers()[ID]
             val command = message.body()
             when (command.verb) {
                 Verb.GET -> {
@@ -36,7 +36,7 @@ class FileVerticle : AbstractVerticle() {
                 }
                 Verb.POST -> {
                     val id = UUID.fromString(idHeader)
-                    val extension = message.headers()["ext"]
+                    val extension = message.headers()[EXT]
                     fileService?.store(command.type, id!!, command.buffer!!, extension,
                             Handler { metaRes: AsyncResult<Meta> ->
                                 message.reply(metaRes.result())
@@ -47,7 +47,7 @@ class FileVerticle : AbstractVerticle() {
                     message.reply(fileService?.delete(command.type, id!!))
                 }
                 Verb.FIND -> {
-                    val metaHeader = message.headers()["meta"]
+                    val metaHeader = message.headers()[META]
                     val meta = fromJson(metaHeader, Meta::class.java)
                     message.reply(fileService?.find(command.type, meta))
                 }
