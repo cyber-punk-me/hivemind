@@ -95,7 +95,6 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, nvidiaRuntime: Boolean, pullTfImage: Boolean): String {
         fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
         //fileSystem.mkdirsBlocking("$workDir/local/tf_session/$modelId")
-        fileSystem.mkdirsBlocking("$workDir/local/tf_export/$modelId")
 
         val labels = hashMapOf(
                 "service" to "training",
