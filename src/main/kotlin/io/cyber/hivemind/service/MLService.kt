@@ -1,5 +1,8 @@
 package io.cyber.hivemind.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
+import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.spotify.docker.client.DefaultDockerClient
 import com.spotify.docker.client.DockerClient
 import io.cyber.hivemind.RunState
@@ -16,8 +19,11 @@ import com.spotify.docker.client.messages.PortBinding
 import io.cyber.hivemind.Meta
 import io.cyber.hivemind.MetaList
 import io.cyber.hivemind.constant.*
+import io.cyber.hivemind.model.RunConfig
 import io.vertx.core.Future
 import io.vertx.core.file.FileSystem
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.ArrayList
 import java.util.HashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -25,7 +31,9 @@ import kotlin.collections.HashSet
 
 
 interface MLService {
-    fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuTrain: Boolean, pullDockerImages: Boolean): Meta
+    fun prepareMachine(modelId: UUID)
+    fun train(scriptId: UUID, modelId: UUID, dataId: UUID): Meta
+    fun getRunConfig(scriptId: UUID): RunConfig
     fun runData(modelId: UUID, dataId: List<UUID>): Meta
     fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>)
     fun find(meta: Meta): MetaList
@@ -34,11 +42,24 @@ interface MLService {
 class MLServiceImpl(val vertx: Vertx) : MLService {
 
     val client = WebClient.create(vertx)
-    val docker: DockerClient = DefaultDockerClient("unix:///var/run/docker.sock")
+    val docker: DockerClient = DefaultDockerClient(DOCKER_LOCAL_URI)
     val fileSystem: FileSystem = vertx.fileSystem()
+    val yamlMapper: ObjectMapper = ObjectMapper(YAMLFactory()).also { it.registerModule(KotlinModule()) }
+
     val tempState: MutableMap<UUID, Meta> = HashMap()
     val killedContainers: MutableSet<String> = HashSet()
     val isTraining = HashMap<UUID, AtomicBoolean>()
+
+
+    override fun prepareMachine(modelId: UUID) {
+        fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
+    }
+
+    override fun getRunConfig(scriptId: UUID): RunConfig {
+        return Files.newBufferedReader(Paths.get("$workDir/local/script/$scriptId/$RUN_CONF_YML")).use {
+            yamlMapper.readValue(it, RunConfig::class.java)
+        }
+    }
 
     override fun find(meta: Meta): MetaList {
         val res = tempState[meta.modelId]
@@ -57,7 +78,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         }
     }
 
-    override fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuTrain: Boolean, pullDockerImages: Boolean): Meta {
+    override fun train(scriptId: UUID, modelId: UUID, dataId: UUID): Meta {
         Thread {
             var doTrain = true
             try {
@@ -71,11 +92,13 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
                     println("training model $modelId from script $scriptId, with data $dataId")
                     tempState[modelId] = Meta(null, modelId, null, RunState.RUNNING, Date(), null)
                     removeContainers(modelId)
+                    prepareMachine(modelId)
+                    val runConfig = getRunConfig(scriptId)
 
-                    val trainContainerId = trainInContainer(scriptId, modelId, dataId, gpuTrain, pullDockerImages)
+                    val trainContainerId = trainInContainer(scriptId, modelId, dataId, runConfig)
                     docker.waitContainer(trainContainerId)
                     if (!killedContainers.contains(trainContainerId)) {
-                        runServableContainer(modelId, pullDockerImages)
+                        runServableContainer(modelId, runConfig.isPullImages())
                     }
                 } else {
                     println("Can't start the training right now. Model $modelId is busy.")
@@ -92,43 +115,39 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         return Meta(scriptId, modelId, dataId, RunState.RUNNING, null, null)
     }
 
-    private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, nvidiaRuntime: Boolean, pullTfImage: Boolean): String {
-        fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
-        //fileSystem.mkdirsBlocking("$workDir/local/tf_session/$modelId")
+    private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, runConfig: RunConfig): String {
 
         val labels = hashMapOf(
-                "service" to "training",
-                "modelId" to modelId.toString()
+                SERVICE to TRAINING,
+                MODEL_ID to modelId.toString()
         )
 
-        val baseImage: String = if (nvidiaRuntime) TF_NVIDIA_PY3 else TF_CPU_PY3
+        if (runConfig.isPullImages()) {
+            docker.pull(runConfig.image)
+        }
 
-        if (pullTfImage) {
-            docker.pull(baseImage)
+        var binds = listOf("$workDir/local/script/$scriptId/src:/src",
+                "$workDir/local/data/$dataId:/data",
+                "$workDir/local/model/$modelId:/tf_export")
+
+        if (runConfig.isExportSession()) {
+            binds += "$workDir/local/tf_session/$modelId:/tf_session"
         }
 
         val hostConfBuilder = HostConfig.builder()
-                .binds("$workDir/local/script/$scriptId/src:/src",
-                        "$workDir/local/data/$dataId:/data",
-                        //"$workDir/local/tf_session/$modelId:/tf_session",
-                        "$workDir/local/model/$modelId:/tf_export")
+                .binds(binds)
 
-        if (nvidiaRuntime) {
-            hostConfBuilder.runtime(NVIDIA_RUNTIME)
+        if (runConfig.getRuntime() != null) {
+            hostConfBuilder.runtime(runConfig.getRuntime())
         }
 
         val hostConfig: HostConfig = hostConfBuilder.build()
 
         val containerConfig: ContainerConfig = ContainerConfig.builder().workingDir("$workDir/local/script/$scriptId")
-                .image(baseImage)
+                .image(runConfig.image)
                 .labels(labels)
                 .hostConfig(hostConfig)
-                .cmd("bash", "-c", "apt-get update && " +
-                        "apt-get install -y python3-pip &&" +
-                        "apt-get install -y git &&" +
-                        "python3 -m pip install numpy sklearn myo-python &&" +
-                        "cd /src && ls && " +
-                        "python3 train.py")
+                .cmd(runConfig.cmd)
                 .build()
         val creation: ContainerCreation = docker.createContainer(containerConfig)
         val id = creation.id()
@@ -141,8 +160,8 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
             docker.pull(TF_SERVING)
         }
         val labels = hashMapOf(
-                "service" to "serving",
-                "modelId" to modelId.toString()
+                SERVICE to SERVING,
+                MODEL_ID to modelId.toString()
         )
 
         val ports = arrayOf("8500", "8501")
@@ -206,9 +225,6 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
     companion object {
         val workDir = System.getProperty("user.dir")
-        const val NVIDIA_RUNTIME = "nvidia"
-        const val TF_NVIDIA_PY3 = "tensorflow/tensorflow:latest-gpu-py3"
-        const val TF_CPU_PY3 = "tensorflow/tensorflow:latest-py3"
         const val TF_SERVING = "tensorflow/serving:latest"
         const val TF_SERVABlE_HOST = "localhost"
         const val TF_SERVABlE_PORT = 8501
