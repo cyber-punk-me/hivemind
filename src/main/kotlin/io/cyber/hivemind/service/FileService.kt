@@ -3,6 +3,7 @@ package io.cyber.hivemind.service
 import io.cyber.hivemind.Meta
 import io.cyber.hivemind.MetaList
 import io.cyber.hivemind.Type
+import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.util.getNextFileName
 import io.cyber.hivemind.util.unzipData
 import io.vertx.core.AsyncResult
@@ -28,22 +29,15 @@ interface FileService {
 //todo implement file system watchdog for local dev
 class DiskFileServiceImpl(val vertx: Vertx) : FileService {
 
-    companion object {
-        const val ROOT = "local"
-        const val DATA_ROOT = "$ROOT/data"
-        const val MODEL_ROOT = "$ROOT/model"
-        const val SCRIPT_ROOT = "$ROOT/script"
-    }
-
     private val fs: FileSystem = vertx.fileSystem()
 
     override fun store(type: Type, id: UUID, uploadedFile: Buffer, extension: String?, handler: Handler<AsyncResult<Meta>>) {
         val baseDir = when (type) {
-            Type.DATA -> DATA_ROOT
-            Type.MODEL -> MODEL_ROOT
-            Type.SCRIPT -> SCRIPT_ROOT
+            Type.DATA -> LOCAL_DATA
+            Type.MODEL -> LOCAL_MODEL
+            Type.SCRIPT -> LOCAL_SCRIPT
         }
-        val dir = "$baseDir/$id"
+        val dir = "$baseDir$id$SEP"
         fs.readDir(dir) { event: AsyncResult<MutableList<String>>? ->
             if (null == event?.result()) {
                 fs.mkdir(dir) {
@@ -59,15 +53,15 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
         if (Type.DATA == type) {
             fs.readDir(dir) { event: AsyncResult<MutableList<String>>? ->
                 val fileName = getNextFileName(event?.result(), extension)
-                val path = "$dir/$fileName"
+                val path = "$dir$fileName"
                 fs.writeFile(path, file) { ar ->
                     handler.handle(ar.map { _ -> Meta(null, null, id, null, null, Date()) })
                 }
             }
         } else if (Type.SCRIPT == type) {
-            val path = "$dir/script.zip"
-            fs.writeFile(path, file) { ar ->
-                unzipData(File("${MLServiceImpl.workDir}/local/script/$id"), "${MLServiceImpl.workDir}/local/script/$id/script.zip")
+            val tempZip = "$dir.zip"
+            fs.writeFile(tempZip, file) { ar ->
+                        unzipData(File("$LOCAL_SCRIPT$id"), tempZip)
                 handler.handle(ar.map { _ -> Meta(id, null, null, null, null, Date()) })
             }
         }
@@ -82,7 +76,12 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
     }
 
     override fun getName(type: Type, id: UUID): String {
-        return "local/data/test.zip"
+        val baseDir = when (type) {
+            Type.DATA -> LOCAL_DATA
+            Type.MODEL -> LOCAL_MODEL
+            Type.SCRIPT -> LOCAL_SCRIPT
+        }
+        return "${baseDir}id"
     }
 
 

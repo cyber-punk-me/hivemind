@@ -22,6 +22,7 @@ import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.model.RunConfig
 import io.vertx.core.Future
 import io.vertx.core.file.FileSystem
+import org.apache.commons.lang3.SystemUtils
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.ArrayList
@@ -42,7 +43,7 @@ interface MLService {
 class MLServiceImpl(val vertx: Vertx) : MLService {
 
     val client = WebClient.create(vertx)
-    val docker: DockerClient = DefaultDockerClient(DOCKER_LOCAL_URI)
+    val docker: DockerClient
     val fileSystem: FileSystem = vertx.fileSystem()
     val yamlMapper: ObjectMapper = ObjectMapper(YAMLFactory()).also { it.registerModule(KotlinModule()) }
 
@@ -50,13 +51,21 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     val killedContainers: MutableSet<String> = HashSet()
     val isTraining = HashMap<UUID, AtomicBoolean>()
 
+    init {
+        docker = if (!SystemUtils.IS_OS_WINDOWS) {
+            DefaultDockerClient(DOCKER_LOCAL_URI_UNIX)
+        } else {
+            DefaultDockerClient.fromEnv().build()
+        }
+    }
+
 
     override fun prepareMachine(modelId: UUID) {
-        fileSystem.mkdirsBlocking("$workDir/local/model/$modelId/1")
+        fileSystem.mkdirsBlocking("$LOCAL_MODEL$modelId/1")
     }
 
     override fun getRunConfig(scriptId: UUID): RunConfig {
-        return Files.newBufferedReader(Paths.get("$workDir/local/script/$scriptId/$RUN_CONF_YML")).use {
+        return Files.newBufferedReader(Paths.get("$LOCAL_SCRIPT$scriptId/$RUN_CONF_YML")).use {
             yamlMapper.readValue(it, RunConfig::class.java)
         }
     }
@@ -126,12 +135,12 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
             docker.pull(runConfig.image)
         }
 
-        var binds = listOf("$workDir/local/script/$scriptId/src:/src",
-                "$workDir/local/data/$dataId:/data",
-                "$workDir/local/model/$modelId:/tf_export")
+        var binds = listOf("$LOCAL_SCRIPT$scriptId/src:/src",
+                "$LOCAL_DATA$dataId:/data",
+                "$LOCAL_MODEL$modelId:/tf_export")
 
         if (runConfig.isExportSession()) {
-            binds += "$workDir/local/tf_session/$modelId:/tf_session"
+            binds += "$LOCAL_MODEL$modelId${SEP}tf_session:/tf_session"
         }
 
         val hostConfBuilder = HostConfig.builder()
@@ -143,7 +152,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
         val hostConfig: HostConfig = hostConfBuilder.build()
 
-        val containerConfig: ContainerConfig = ContainerConfig.builder().workingDir("$workDir/local/script/$scriptId")
+        val containerConfig: ContainerConfig = ContainerConfig.builder().workingDir("$LOCAL_SCRIPT$scriptId")
                 .image(runConfig.image)
                 .labels(labels)
                 .hostConfig(hostConfig)
@@ -174,7 +183,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
         val hostConfig: HostConfig =
                 HostConfig.builder()
-                        .binds("$workDir/local/model/$modelId:/models/$modelId")
+                        .binds("$LOCAL_MODEL$modelId:/models/$modelId")
                         .portBindings(portBindings)
                         .build()
 
@@ -224,7 +233,6 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     companion object {
-        val workDir = System.getProperty("user.dir")
         const val TF_SERVING = "tensorflow/serving:latest"
         const val TF_SERVABlE_HOST = "localhost"
         const val TF_SERVABlE_PORT = 8501
