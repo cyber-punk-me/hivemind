@@ -20,9 +20,10 @@ import io.cyber.hivemind.Meta
 import io.cyber.hivemind.MetaList
 import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.model.RunConfig
+import io.cyber.hivemind.util.dockerHostDir
 import io.vertx.core.Future
 import io.vertx.core.file.FileSystem
-import org.apache.commons.lang3.SystemUtils
+import org.apache.commons.lang.SystemUtils
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.ArrayList
@@ -135,12 +136,12 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
             docker.pull(runConfig.image)
         }
 
-        var binds = listOf("$LOCAL_SCRIPT$scriptId/src:/src",
-                "$LOCAL_DATA$dataId:/data",
-                "$LOCAL_MODEL$modelId:/tf_export")
+        var binds = listOf("$LOCAL_SCRIPT$scriptId${SEP}src".dockerHostDir() + ":/src",
+                "$LOCAL_DATA$dataId".dockerHostDir() + ":/data",
+                "$LOCAL_MODEL$modelId".dockerHostDir() + ":/tf_export")
 
         if (runConfig.isExportSession()) {
-            binds += "$LOCAL_MODEL$modelId${SEP}tf_session:/tf_session"
+            binds += "$LOCAL_MODEL$modelId${SEP}tf_session".dockerHostDir() + ":/tf_session"
         }
 
         val hostConfBuilder = HostConfig.builder()
@@ -152,7 +153,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
         val hostConfig: HostConfig = hostConfBuilder.build()
 
-        val containerConfig: ContainerConfig = ContainerConfig.builder().workingDir("$LOCAL_SCRIPT$scriptId")
+        val containerConfig: ContainerConfig = ContainerConfig.builder().workingDir("$LOCAL_SCRIPT$scriptId".dockerHostDir())
                 .image(runConfig.image)
                 .labels(labels)
                 .hostConfig(hostConfig)
@@ -183,7 +184,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
         val hostConfig: HostConfig =
                 HostConfig.builder()
-                        .binds("$LOCAL_MODEL$modelId:/models/$modelId")
+                        .binds("$LOCAL_MODEL$modelId".dockerHostDir() + ":/models/$modelId")
                         .portBindings(portBindings)
                         .build()
 

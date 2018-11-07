@@ -2,6 +2,7 @@ package io.cyber.hivemind.util
 
 import io.vertx.core.http.HttpHeaders
 import io.vertx.ext.web.RoutingContext
+import org.apache.commons.lang.SystemUtils
 import java.io.*
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -36,6 +37,14 @@ fun getNextFileName(files : List<String>?, extension: String?) : String {
 private fun String.cutEtension(): String {
     if (!contains(".")) return this
     return split(".")[0]
+}
+
+fun String.dockerHostDir(): String {
+    return if (!SystemUtils.IS_OS_WINDOWS) {
+        this
+    } else {
+        "/" + replace(":\\", "\\").replace("\\", "/")
+    }
 }
 
 fun isInteger(s: String): Boolean {
