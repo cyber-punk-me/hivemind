@@ -136,8 +136,9 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
             docker.pull(runConfig.image)
         }
 
-        var binds = listOf("$LOCAL_SCRIPT$scriptId${SEP}src".dockerHostDir() + ":/src",
-                "$LOCAL_DATA$dataId".dockerHostDir() + ":/data",
+        var binds = listOf(
+                "$LOCAL_SCRIPT$scriptId${SEP}src".dockerHostDir() + ":/src:ro",
+                "$LOCAL_DATA$dataId".dockerHostDir() + ":/data:ro",
                 "$LOCAL_MODEL$modelId".dockerHostDir() + ":/tf_export")
 
         if (runConfig.isExportSession()) {

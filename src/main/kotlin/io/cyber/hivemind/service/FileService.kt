@@ -60,8 +60,16 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
             }
         } else if (Type.SCRIPT == type) {
             val tempZip = "$dir.zip"
+            fs.deleteRecursive(dir, true) {
+                storeScript(dir, tempZip, file, id, handler)
+            }
+        }
+    }
+
+    private fun storeScript(dir: String, tempZip: String, file: Buffer, id: UUID, handler: Handler<AsyncResult<Meta>>) {
+        fs.mkdir(dir) {
             fs.writeFile(tempZip, file) { ar ->
-                        unzipData(File("$LOCAL_SCRIPT$id"), tempZip)
+                unzipData(File("$LOCAL_SCRIPT$id"), tempZip)
                 handler.handle(ar.map { _ -> Meta(id, null, null, null, null, Date()) })
             }
         }
