@@ -1,4 +1,4 @@
-# Hivemind turns your tensorflow project into an API
+# Hivemind turns your Tensorflow project into an API
 
 Train your Tensorflow models versus user customized data. All via REST API.
 
