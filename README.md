@@ -1,6 +1,6 @@
 # Hivemind turns your Tensorflow project into an API
 
-Trains,serves and distributes your Tensorflow models via REST API.
+Trains, serves and distributes your Tensorflow models via REST API.
 
 ## STATUS alpha; implementing swagger schema : https://app.swaggerhub.com/apis/kyr7/hivemind/0.0.1
 
