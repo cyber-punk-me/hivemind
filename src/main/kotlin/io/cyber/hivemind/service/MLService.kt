@@ -88,6 +88,8 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         }
     }
 
+    //todo check no such file
+    //todo check statuses
     override fun train(scriptId: UUID, modelId: UUID, dataId: UUID): Meta {
         Thread {
             var doTrain = true
