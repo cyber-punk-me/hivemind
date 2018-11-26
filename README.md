@@ -1,8 +1,6 @@
-# The Hivemind server implements API for machine learning driven apps and devices.
+# Hivemind turns your Tensorflow project into an API
 
-A very common pattern for ML driven apps and devices could be offloading heavy computations to servers while using pre-trained models on devices, which Tensorflow allows you to do. Hivemind helps to collect data and use it for ML in Tensorflow. After model was trained, you can either use it online or offline.
-
-Hivemind is written in Kotlin with minimalistic dependencies, allowing you to use the same language for server and client development.
+Collects data, trains, serves and distributes your Tensorflow models via REST API.
 
 ## STATUS alpha; implementing swagger schema : https://app.swaggerhub.com/apis/kyr7/hivemind/0.0.1
 
