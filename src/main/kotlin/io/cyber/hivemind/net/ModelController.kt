@@ -56,10 +56,6 @@ class ModelController(val vertx: Vertx) {
         }
     }
 
-    fun applyModelToData(context: RoutingContext) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
     fun applyModelToInput(context: RoutingContext) {
         val modelId = context.request().getParam(MODEL_ID)
         val cmd = Command(Type.MODEL, Verb.APPLY, context.body)

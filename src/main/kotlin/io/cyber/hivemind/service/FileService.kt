@@ -46,11 +46,11 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
         }
     }
 
-    private fun storeBuffer(type: Type, id: UUID, dir: String, file: Buffer, extension: String?, handler: Handler<AsyncResult<Meta>>) {
-        if (Type.DATA == type) {
-            storeDataBuffer(dir, id, file, extension, handler)
-        } else if (Type.SCRIPT == type) {
-            storeScriptBuffer(dir, id, file, handler)
+    private fun storeBuffer(type: Type, id: UUID, dir: String, buffer: Buffer, extension: String?, handler: Handler<AsyncResult<Meta>>) {
+        when (type) {
+            Type.DATA -> storeDataBuffer(dir, id, buffer, extension, handler)
+            Type.SCRIPT -> storeScriptBuffer(dir, id, buffer, handler)
+            Type.MODEL -> updateMeta(Type.MODEL, id, fromJson(buffer, Meta::class.java))
         }
     }
 

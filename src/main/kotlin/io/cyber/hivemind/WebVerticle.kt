@@ -23,7 +23,6 @@ class WebVerticle : AbstractVerticle() {
         router.get("/model/:modelId").handler(modelController::getModel)
         router.post("/model/:modelId").handler(modelController::postModel)
         router.delete("/model/:modelId").handler(modelController::deleteModel)
-        router.post("/apply/:modelId/:dataId").handler(modelController::applyModelToData)
         router.post("/apply/:modelId").handler(modelController::applyModelToInput)
 
         val dataController = DataController(vertx)

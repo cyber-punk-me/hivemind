@@ -6,26 +6,26 @@ import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.spotify.docker.client.DefaultDockerClient
 import com.spotify.docker.client.DockerClient
 import com.spotify.docker.client.messages.*
-import io.cyber.hivemind.RunState
+import io.cyber.hivemind.*
 import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
 import io.vertx.core.json.JsonObject
 import io.vertx.core.Vertx
 import io.vertx.ext.web.client.WebClient
 import java.util.*
-import io.cyber.hivemind.Meta
-import io.cyber.hivemind.MetaList
 import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.model.RunConfig
 import io.cyber.hivemind.util.dockerHostDir
+import io.cyber.hivemind.util.toJson
 import io.vertx.core.Future
+import io.vertx.core.buffer.Buffer
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.file.FileSystem
 import org.apache.commons.lang.SystemUtils
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.ArrayList
 import java.util.HashMap
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.collections.HashSet
 
 
@@ -46,7 +46,6 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     val yamlMapper: ObjectMapper = ObjectMapper(YAMLFactory()).also { it.registerModule(KotlinModule()) }
 
     val killedContainers: MutableSet<String> = HashSet()
-    val isTraining = HashMap<UUID, AtomicBoolean>()
 
     init {
         docker = if (!SystemUtils.IS_OS_WINDOWS) {
@@ -164,7 +163,16 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val creation: ContainerCreation = docker.createContainer(containerConfig)
         val id = creation.id()
         docker.startContainer(id)
+        val meta = getModelsInTraining().filter { it.modelId == modelId }.first()
+        notifyModelMetaUpdate(meta)
         return id!!
+    }
+
+    private fun notifyModelMetaUpdate(meta: Meta) {
+        val cmd = Command(Type.MODEL, Verb.POST, Buffer.buffer(toJson(meta)))
+        val opts = DeliveryOptions()
+        opts.addHeader(ID, meta.modelId.toString())
+        vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts)
     }
 
     private fun runServableContainer(scriptId: UUID, modelId: UUID, dataId: UUID, pullServingImage: Boolean): String {
@@ -204,6 +212,8 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val id = creation.id()
         //val info = docker.inspectContainer(id)
         docker.startContainer(id)
+        val meta = getModelsInServing().filter { it.modelId == modelId }.first()
+        notifyModelMetaUpdate(meta)
         return id!!
     }
 
