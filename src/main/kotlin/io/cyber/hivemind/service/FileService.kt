@@ -24,8 +24,8 @@ import java.util.*
 interface FileService {
     fun getZip(type: Type, id: UUID, handler: Handler<AsyncResult<String>>)
     fun store(type: Type, id: UUID, uploadedFile: Buffer, extension: String?, handler: Handler<AsyncResult<Meta>>)
-    fun delete(type: Type, id: UUID): String
-    fun find(type: Type, meta: Meta): MetaList
+    fun find(type: Type, meta: Meta, handler: Handler<AsyncResult<MetaList>>): MetaList
+    fun delete(type: Type, id: UUID)
 }
 
 class DiskFileServiceImpl(val vertx: Vertx) : FileService {
@@ -88,11 +88,11 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
         }
     }
 
-    override fun delete(type: Type, id: UUID): String {
+    override fun delete(type: Type, id: UUID) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun find(type: Type, meta: Meta): MetaList {
+    override fun find(type: Type, meta: Meta, handler: Handler<AsyncResult<MetaList>>): MetaList {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
