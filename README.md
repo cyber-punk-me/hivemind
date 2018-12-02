@@ -5,7 +5,7 @@ Collects data, trains, serves and distributes your Tensorflow models via REST AP
 ## STATUS alpha; implementing swagger schema : https://app.swaggerhub.com/apis/kyr7/hivemind/0.0.1
 
 ## Running
-1. tested on ubuntu 18
+1. tested on ubuntu 18. CPU training shoud also run on Windows and Mac OS. 
 1. install docker https://www.docker.com/
     * install nvidia docker runtime https://github.com/NVIDIA/nvidia-docker
     * recommended to `docker pull` : 
