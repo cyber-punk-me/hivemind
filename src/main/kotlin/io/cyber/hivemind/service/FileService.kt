@@ -22,7 +22,7 @@ import java.util.*
  * Time: 13:56
  */
 interface FileService {
-    fun getName(type: Type, id: UUID): String
+    fun getZip(type: Type, id: UUID, handler: Handler<AsyncResult<String>>)
     fun store(type: Type, id: UUID, uploadedFile: Buffer, extension: String?, handler: Handler<AsyncResult<Meta>>)
     fun delete(type: Type, id: UUID): String
     fun find(type: Type, meta: Meta): MetaList
@@ -96,18 +96,17 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun getName(type: Type, id: UUID): String {
-        val baseDir = getBaseDir(type)
-        return "${baseDir}id"
+    //zips files and provides the name of resulting zip file
+    override fun getZip(type: Type, id: UUID, handler: Handler<AsyncResult<String>>) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     private fun getBaseDir(type: Type): String {
-        val baseDir = when (type) {
+        return when (type) {
             Type.DATA -> LOCAL_DATA
             Type.MODEL -> LOCAL_MODEL
             Type.SCRIPT -> LOCAL_SCRIPT
         }
-        return baseDir
     }
 
     private fun getMeta(type: Type, id: UUID): Meta? {

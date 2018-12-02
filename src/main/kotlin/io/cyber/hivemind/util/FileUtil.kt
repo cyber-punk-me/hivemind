@@ -16,7 +16,7 @@ import java.util.zip.ZipInputStream
 
 const val BUFFER_SIZE = 4096
 
-fun downloadFile(routingContext: RoutingContext, fileName : String) {
+fun sendZipFile(routingContext: RoutingContext, fileName : String) {
     routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/zip")
           .putHeader("Content-Disposition", "attachment; filename=\"$fileName\"")
           .putHeader(HttpHeaders.TRANSFER_ENCODING, "chunked")
