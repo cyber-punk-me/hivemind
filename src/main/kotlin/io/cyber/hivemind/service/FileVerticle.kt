@@ -6,6 +6,7 @@ import io.cyber.hivemind.Meta
 import io.cyber.hivemind.Verb
 import io.cyber.hivemind.util.fromJson
 import io.vertx.core.*
+import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.MessageConsumer
 import java.util.*
 
@@ -32,15 +33,16 @@ class FileVerticle : AbstractVerticle() {
             when (command.verb) {
                 Verb.GET -> {
                     val id = UUID.fromString(idHeader)
-                    message.reply(fileService?.getName(command.type, id!!))
+                    fileService?.getZip(command.type, id!!, Handler { zipRes: AsyncResult<String> ->
+                        message.reply(zipRes.result())
+                    })
                 }
                 Verb.POST -> {
                     val id = UUID.fromString(idHeader)
                     val extension = message.headers()[EXT]
-                    fileService?.store(command.type, id!!, command.buffer!!, extension,
-                            Handler { metaRes: AsyncResult<Meta> ->
-                                message.reply(metaRes.result())
-                            })
+                    fileService?.store(command.type, id!!, command.buffer!!, extension, Handler { metaRes: AsyncResult<Meta> ->
+                        message.reply(metaRes.result())
+                    })
                 }
                 Verb.DELETE -> {
                     val id = UUID.fromString(idHeader)

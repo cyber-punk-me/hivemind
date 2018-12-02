@@ -7,7 +7,7 @@ import io.cyber.hivemind.Verb
 import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.service.FileVerticle
 import io.cyber.hivemind.util.addNotNullHeader
-import io.cyber.hivemind.util.downloadFile
+import io.cyber.hivemind.util.sendZipFile
 import io.cyber.hivemind.util.toJson
 import io.vertx.core.AsyncResult
 import io.vertx.core.Vertx
@@ -25,7 +25,7 @@ class DataController(val vertx: Vertx) {
         opts.addHeader(ID, dataId)
         vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<String>>? ->
             if (ar!!.succeeded()) {
-                downloadFile(context, ar.result().body())
+                sendZipFile(context, ar.result().body())
             } else {
                 ar.cause().printStackTrace()
                 context.response().end(ar.toString())

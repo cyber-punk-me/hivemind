@@ -6,8 +6,6 @@ import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.MessageCodec
 import io.vertx.core.json.JsonObject
 import java.util.*
-import kotlin.collections.ArrayList
-
 
 /**
  * User: kirillskiy
@@ -59,7 +57,7 @@ class CommandCodec : MessageCodec<Command, Command> {
         private const val LINK_LIMIT = 100000
         private val bufferLocator: LinkedHashMap<UUID, Buffer> = LinkedHashMap()
 
-        fun createBufferLink(buffer: Buffer): UUID {
+        @Deprecated("in memory buffer sharing won't get far") fun createBufferLink(buffer: Buffer): UUID {
             val uuid = UUID.randomUUID()
             bufferLocator[uuid] = buffer
             if (bufferLocator.size > LINK_LIMIT) {
@@ -68,7 +66,7 @@ class CommandCodec : MessageCodec<Command, Command> {
             return uuid
         }
 
-        fun getBuffer(link: UUID?): Buffer? {
+        @Deprecated("in memory buffer sharing won't get far") fun getBuffer(link: UUID?): Buffer? {
             return bufferLocator[link]
         }
     }
