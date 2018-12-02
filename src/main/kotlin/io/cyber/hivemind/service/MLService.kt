@@ -5,30 +5,27 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.spotify.docker.client.DefaultDockerClient
 import com.spotify.docker.client.DockerClient
-import io.cyber.hivemind.RunState
+import com.spotify.docker.client.messages.*
+import io.cyber.hivemind.*
 import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
 import io.vertx.core.json.JsonObject
 import io.vertx.core.Vertx
 import io.vertx.ext.web.client.WebClient
 import java.util.*
-import com.spotify.docker.client.messages.ContainerConfig
-import com.spotify.docker.client.messages.ContainerCreation
-import com.spotify.docker.client.messages.HostConfig
-import com.spotify.docker.client.messages.PortBinding
-import io.cyber.hivemind.Meta
-import io.cyber.hivemind.MetaList
 import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.model.RunConfig
 import io.cyber.hivemind.util.dockerHostDir
+import io.cyber.hivemind.util.toJson
 import io.vertx.core.Future
+import io.vertx.core.buffer.Buffer
+import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.file.FileSystem
 import org.apache.commons.lang.SystemUtils
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.ArrayList
 import java.util.HashMap
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.collections.HashSet
 
 
@@ -36,9 +33,9 @@ interface MLService {
     fun prepareMachine(modelId: UUID)
     fun train(scriptId: UUID, modelId: UUID, dataId: UUID): Meta
     fun getRunConfig(scriptId: UUID): RunConfig
-    fun runData(modelId: UUID, dataId: List<UUID>): Meta
     fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>)
-    fun find(meta: Meta): MetaList
+    fun getModelsInTraining(): MetaList
+    fun getModelsInServing(): MetaList
 }
 
 class MLServiceImpl(val vertx: Vertx) : MLService {
@@ -48,9 +45,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     val fileSystem: FileSystem = vertx.fileSystem()
     val yamlMapper: ObjectMapper = ObjectMapper(YAMLFactory()).also { it.registerModule(KotlinModule()) }
 
-    val tempState: MutableMap<UUID, Meta> = HashMap()
     val killedContainers: MutableSet<String> = HashSet()
-    val isTraining = HashMap<UUID, AtomicBoolean>()
 
     init {
         docker = if (!SystemUtils.IS_OS_WINDOWS) {
@@ -71,38 +66,39 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         }
     }
 
-    override fun find(meta: Meta): MetaList {
-        val res = tempState[meta.modelId]
-        if (res != null) {
-            return MetaList().also { it.add(res) }
+    private fun getMetaFromContainer(container: Container): Meta {
+        val labels = container.labels()!!
+        val state: RunState = when (labels[SERVICE]) {
+            TRAINING -> RunState.TRAINING
+            SERVING -> RunState.SERVING
+            else -> RunState.ERROR
         }
-        val containers = docker.listContainers(DockerClient.ListContainersParam.withLabel(MODEL_ID, meta.modelId.toString()))
+        return Meta(labels[SCRIPT_ID], labels[MODEL_ID], labels[DATA_ID], state, Date(container.created()), null)
+    }
+
+    override fun getModelsInTraining(): MetaList {
+        val containers = docker.listContainers(DockerClient.ListContainersParam.withLabel(SERVICE, TRAINING))
         if (containers.isEmpty()) {
             return MetaList()
         }
-        val container = containers.first()
-        return if (container.labels()!!["service"].equals("training")) {
-            MetaList().also { it.add(Meta(null, meta.modelId, null, RunState.RUNNING, null, null)) }
-        } else {
-            MetaList().also { it.add(Meta(null, meta.modelId, null, RunState.COMPLETE, null, null)) }
+        return MetaList(containers.map { c -> getMetaFromContainer(c) })
+    }
+
+    override fun getModelsInServing(): MetaList {
+        val containers = docker.listContainers(DockerClient.ListContainersParam.withLabel(SERVICE, SERVING))
+        if (containers.isEmpty()) {
+            return MetaList()
         }
+        return MetaList(containers.map { c -> getMetaFromContainer(c) })
     }
 
     //todo check no such file
     //todo check statuses
     override fun train(scriptId: UUID, modelId: UUID, dataId: UUID): Meta {
         Thread {
-            var doTrain = true
             try {
-                if (!isTraining.containsKey(modelId)) {
-                    synchronized(isTraining) {
-                        isTraining.putIfAbsent(modelId, AtomicBoolean())
-                    }
-                }
-                doTrain = (isTraining[modelId]!!.compareAndSet(false, true))
-                if (doTrain) {
+                if (checkCanStartTraining(modelId)) {
                     println("training model $modelId from script $scriptId, with data $dataId")
-                    tempState[modelId] = Meta(null, modelId, null, RunState.RUNNING, Date(), null)
                     removeContainers(modelId)
                     prepareMachine(modelId)
                     val runConfig = getRunConfig(scriptId)
@@ -110,28 +106,30 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
                     val trainContainerId = trainInContainer(scriptId, modelId, dataId, runConfig)
                     docker.waitContainer(trainContainerId)
                     if (!killedContainers.contains(trainContainerId)) {
-                        runServableContainer(modelId, runConfig.isPullImages())
+                        runServableContainer(scriptId, modelId, dataId, runConfig.isPullImages())
                     }
                 } else {
                     println("Can't start the training right now. Model $modelId is busy.")
                 }
-            } finally {
-                if (doTrain) {
-                    tempState.remove(modelId)
-                    synchronized(isTraining) {
-                        isTraining[modelId]?.set(false)
-                    }
-                }
+            } catch (t : Throwable) {
+                print(t.message)
             }
         }.start()
-        return Meta(scriptId, modelId, dataId, RunState.RUNNING, null, null)
+        return Meta(scriptId, modelId, dataId, RunState.TRAINING, null, null)
+    }
+
+    @Synchronized
+    private fun checkCanStartTraining(modelId: UUID): Boolean {
+        return getModelsInTraining().filter { it.modelId == modelId }.isEmpty()
     }
 
     private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, runConfig: RunConfig): String {
 
         val labels = hashMapOf(
                 SERVICE to TRAINING,
-                MODEL_ID to modelId.toString()
+                MODEL_ID to modelId.toString(),
+                SCRIPT_ID to scriptId.toString(),
+                DATA_ID to dataId.toString()
         )
 
         if (runConfig.isPullImages()) {
@@ -165,16 +163,27 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val creation: ContainerCreation = docker.createContainer(containerConfig)
         val id = creation.id()
         docker.startContainer(id)
+        val meta = getModelsInTraining().filter { it.modelId == modelId }.first()
+        notifyModelMetaUpdate(meta)
         return id!!
     }
 
-    private fun runServableContainer(modelId: UUID, pullServingImage: Boolean): String {
+    private fun notifyModelMetaUpdate(meta: Meta) {
+        val cmd = Command(Type.MODEL, Verb.POST, Buffer.buffer(toJson(meta)))
+        val opts = DeliveryOptions()
+        opts.addHeader(ID, meta.modelId.toString())
+        vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts)
+    }
+
+    private fun runServableContainer(scriptId: UUID, modelId: UUID, dataId: UUID, pullServingImage: Boolean): String {
         if (pullServingImage) {
             docker.pull(TF_SERVING)
         }
         val labels = hashMapOf(
                 SERVICE to SERVING,
-                MODEL_ID to modelId.toString()
+                MODEL_ID to modelId.toString(),
+                SCRIPT_ID to scriptId.toString(),
+                DATA_ID to dataId.toString()
         )
 
         val ports = arrayOf("8500", "8501")
@@ -203,6 +212,8 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val id = creation.id()
         //val info = docker.inspectContainer(id)
         docker.startContainer(id)
+        val meta = getModelsInServing().filter { it.modelId == modelId }.first()
+        notifyModelMetaUpdate(meta)
         return id!!
     }
 
@@ -218,13 +229,10 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         }
     }
 
-    override fun runData(modelId: UUID, dataId: List<UUID>): Meta {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
     override fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>) {
-        val modelMeta = find(Meta(null, modelId, null, null, null, null))
-        if (!modelMeta.isEmpty() && RunState.COMPLETE == modelMeta[0].state) {
+        //todo faster model lookup
+        val modelMeta = getModelsInServing().filter { meta -> meta.modelId == modelId }
+        if (!modelMeta.isEmpty() && RunState.SERVING == modelMeta[0].state) {
             client.post(TF_SERVABlE_PORT, TF_SERVABlE_HOST, "$TF_SERVABlE_URI/$modelId:predict")
                     .sendJsonObject(json) { ar ->
                         run {

@@ -3,6 +3,7 @@ package io.cyber.hivemind.service
 import io.cyber.hivemind.Command
 import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.Meta
+import io.cyber.hivemind.MetaList
 import io.cyber.hivemind.Verb
 import io.cyber.hivemind.util.fromJson
 import io.vertx.core.*
@@ -51,7 +52,9 @@ class FileVerticle : AbstractVerticle() {
                 Verb.FIND -> {
                     val metaHeader = message.headers()[META]
                     val meta = fromJson(metaHeader, Meta::class.java)
-                    message.reply(fileService?.find(command.type, meta))
+                    message.reply(fileService?.find(command.type, meta, Handler { metaRes: AsyncResult<MetaList> ->
+                        message.reply(metaRes.result())
+                    }))
                 }
                 else -> {
                 }
