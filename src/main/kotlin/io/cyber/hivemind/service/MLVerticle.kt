@@ -20,6 +20,9 @@ class MLVerticle : AbstractVerticle() {
     private var consumer: MessageConsumer<Command>? = null
 
     override fun start(startFuture: Future<Void>) {
+        val stoppedServ = mLService.getModelsInServing(true)
+        //todo restart containers
+        print(stoppedServ)
         consumer = vertx.eventBus().consumer<Command>(MLVerticle::class.java.name) { message ->
             val command = message.body()
             when (command.verb) {

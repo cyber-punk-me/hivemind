@@ -34,8 +34,8 @@ interface MLService {
     fun train(scriptId: UUID, modelId: UUID, dataId: UUID): Meta
     fun getRunConfig(scriptId: UUID): RunConfig
     fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>)
-    fun getModelsInTraining(): MetaList
-    fun getModelsInServing(): MetaList
+    fun getModelsInTraining(stopped : Boolean = false): MetaList
+    fun getModelsInServing(stopped : Boolean = false): MetaList
 }
 
 class MLServiceImpl(val vertx: Vertx) : MLService {
@@ -76,20 +76,22 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         return Meta(labels[SCRIPT_ID], labels[MODEL_ID], labels[DATA_ID], state, Date(container.created()), null)
     }
 
-    override fun getModelsInTraining(): MetaList {
-        val containers = docker.listContainers(DockerClient.ListContainersParam.withLabel(SERVICE, TRAINING))
-        if (containers.isEmpty()) {
-            return MetaList()
-        }
-        return MetaList(containers.map { c -> getMetaFromContainer(c) })
+    override fun getModelsInTraining(stopped: Boolean): MetaList {
+        return getContainers(stopped, TRAINING)
     }
 
-    override fun getModelsInServing(): MetaList {
-        val containers = docker.listContainers(DockerClient.ListContainersParam.withLabel(SERVICE, SERVING))
-        if (containers.isEmpty()) {
-            return MetaList()
+    override fun getModelsInServing(stopped: Boolean): MetaList {
+        return getContainers(stopped, SERVING)
+    }
+
+    private fun getContainers(stopped: Boolean, label: String): MetaList {
+        val withLabelParam = DockerClient.ListContainersParam.withLabel(SERVICE, label)
+        if (!stopped) {
+            return MetaList(docker.listContainers(withLabelParam).map { c -> getMetaFromContainer(c) })
+        } else {
+            val stoppedParam = DockerClient.ListContainersParam.withStatusExited()
+            return MetaList(docker.listContainers(withLabelParam, stoppedParam).map { c -> getMetaFromContainer(c) })
         }
-        return MetaList(containers.map { c -> getMetaFromContainer(c) })
     }
 
     //todo check no such file
