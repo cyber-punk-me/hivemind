@@ -20,4 +20,14 @@ class CodecTest {
         assertEquals(command, decoded)
     }
 
+    @Test
+    fun testCommandEmpty(tc: TestContext) {
+        val command = Command(Type.MODEL, Verb.FIND, null)
+        val transport = Buffer.buffer()
+        val codec = CommandCodec()
+        codec.encodeToWire(transport, command)
+        val decoded = codec.decodeFromWire(0, transport)
+        assertEquals(command, decoded)
+    }
+
 }
