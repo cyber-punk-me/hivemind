@@ -31,7 +31,7 @@ import kotlin.collections.HashSet
 
 interface MLService {
     fun prepareMachine(modelId: UUID)
-    fun train(scriptId: UUID, modelId: UUID, dataId: UUID): Meta
+    fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuSupported: Boolean = true): Meta
     fun getRunConfig(scriptId: UUID): RunConfig
     fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>)
     fun getModelsInTraining(stopped : Boolean = false): MetaList
@@ -96,15 +96,20 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
     //todo check no such file
     //todo check statuses
-    override fun train(scriptId: UUID, modelId: UUID, dataId: UUID): Meta {
+    override fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuSupported: Boolean): Meta {
         Thread {
             try {
                 if (checkCanStartTraining(modelId)) {
                     println("training model $modelId from script $scriptId, with data $dataId")
                     removeContainers(modelId)
                     prepareMachine(modelId)
-                    val runConfig = getRunConfig(scriptId)
-
+                    var runConfig = getRunConfig(scriptId)
+                    if (!gpuSupported) {
+                        runConfig = runConfig.copy(
+                                image = runConfig.image.replace("latest-gpu-py3", "latest-py3"),
+                                opt = HashMap(runConfig.opt).also { it.remove(RunConfig.RUNTIME) }
+                        )
+                    }
                     val trainContainerId = trainInContainer(scriptId, modelId, dataId, runConfig)
                     docker.waitContainer(trainContainerId)
                     if (!killedContainers.contains(trainContainerId)) {
