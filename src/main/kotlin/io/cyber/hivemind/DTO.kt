@@ -20,7 +20,7 @@ enum class RunState {
     NEW, TRAINING, SERVING, ERROR
 }
 
-data class Model(val dataId: UUID, val scriptId: UUID, val gpuSupported: Boolean)
+data class Model(val dataId: UUID, val scriptId: UUID, val gpuSupported: Boolean = true)
 
 data class Command(val type: Type, val verb: Verb, val buffer: Buffer? = null)
 

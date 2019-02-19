@@ -13,3 +13,4 @@ local/model/
 !local/model/init
 !gradle-wrapper.jar
 examples/*.zip
+/file-uploads

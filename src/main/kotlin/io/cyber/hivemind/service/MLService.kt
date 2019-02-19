@@ -31,7 +31,7 @@ import kotlin.collections.HashSet
 
 interface MLService {
     fun prepareMachine(modelId: UUID)
-    fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuSupported: Boolean = true): Meta
+    fun train(scriptId: UUID, modelId: UUID, dataId: UUID, gpuSupported: Boolean): Meta
     fun getRunConfig(scriptId: UUID): RunConfig
     fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>)
     fun getModelsInTraining(stopped : Boolean = false): MetaList
