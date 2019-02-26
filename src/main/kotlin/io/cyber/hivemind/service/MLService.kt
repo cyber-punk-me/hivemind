@@ -3,6 +3,7 @@ package io.cyber.hivemind.service
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.spotify.docker.client.DefaultDockerClient
 import com.spotify.docker.client.DockerClient
 import com.spotify.docker.client.messages.*
@@ -38,12 +39,19 @@ interface MLService {
     fun getModelsInServing(stopped : Boolean = false): MetaList
 }
 
+private const val SYSTEM_PROPERTY_PROFILE_NAME = "profile"
+private const val ENV_VARIABLE_PROFILE_NAME = "HIVEMIND_PROFILE"
+private const val DEFAULT_PROFILE = "cpu"
+
 class MLServiceImpl(val vertx: Vertx) : MLService {
 
     val client = WebClient.create(vertx)
     val docker: DockerClient
     val fileSystem: FileSystem = vertx.fileSystem()
     val yamlMapper: ObjectMapper = ObjectMapper(YAMLFactory()).also { it.registerModule(KotlinModule()) }
+    val profile: String = System.getProperty(SYSTEM_PROPERTY_PROFILE_NAME)
+        ?: System.getenv(ENV_VARIABLE_PROFILE_NAME)
+        ?: DEFAULT_PROFILE
 
     val killedContainers: MutableSet<String> = HashSet()
 
@@ -61,9 +69,10 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     override fun getRunConfig(scriptId: UUID): RunConfig {
-        return Files.newBufferedReader(Paths.get("$LOCAL_SCRIPT$scriptId/$RUN_CONF_YML")).use {
-            yamlMapper.readValue(it, RunConfig::class.java)
-        }
+        val configsSource = Files.newBufferedReader(Paths.get("$LOCAL_SCRIPT$scriptId/$RUN_CONF_YML"))
+        val runConfigsByName = yamlMapper.readValue<Map<String, RunConfig>>(configsSource)
+        return runConfigsByName[profile]
+            ?: throw RuntimeException("Profile '$profile' not found, available profiles are ${runConfigsByName.keys}")
     }
 
     private fun getMetaFromContainer(container: Container): Meta {
@@ -122,7 +131,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
     @Synchronized
     private fun checkCanStartTraining(modelId: UUID): Boolean {
-        return getModelsInTraining().filter { it.modelId == modelId }.isEmpty()
+        return getModelsInTraining().none { it.modelId == modelId }
     }
 
     private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, runConfig: RunConfig): String {
@@ -138,13 +147,14 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
             docker.pull(runConfig.image)
         }
 
-        var binds = listOf(
+        val binds = mutableListOf(
                 "$LOCAL_SCRIPT$scriptId${SEP}src".dockerHostDir() + ":/src:ro",
                 "$LOCAL_DATA$dataId".dockerHostDir() + ":/data:ro",
-                "$LOCAL_MODEL$modelId".dockerHostDir() + ":/tf_export")
+                "$LOCAL_MODEL$modelId".dockerHostDir() + ":/tf_export"
+        )
 
         if (runConfig.isExportSession()) {
-            binds += "$LOCAL_MODEL$modelId${SEP}tf_session".dockerHostDir() + ":/tf_session"
+            binds.add("$LOCAL_MODEL$modelId${SEP}tf_session".dockerHostDir() + ":/tf_session")
         }
 
         val hostConfBuilder = HostConfig.builder()
@@ -165,7 +175,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val creation: ContainerCreation = docker.createContainer(containerConfig)
         val id = creation.id()
         docker.startContainer(id)
-        val meta = getModelsInTraining().filter { it.modelId == modelId }.first()
+        val meta = getModelsInTraining().first { it.modelId == modelId }
         notifyModelMetaUpdate(meta)
         return id!!
     }
@@ -214,7 +224,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val id = creation.id()
         //val info = docker.inspectContainer(id)
         docker.startContainer(id)
-        val meta = getModelsInServing().filter { it.modelId == modelId }.first()
+        val meta = getModelsInServing().first { it.modelId == modelId }
         notifyModelMetaUpdate(meta)
         return id!!
     }
