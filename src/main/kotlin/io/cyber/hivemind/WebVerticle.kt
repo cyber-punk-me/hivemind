@@ -6,6 +6,7 @@ import io.cyber.hivemind.net.ScriptController
 import io.vertx.core.AbstractVerticle
 import io.vertx.core.Vertx
 import io.vertx.ext.web.Router
+import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
 
 class WebVerticle : AbstractVerticle() {
@@ -36,6 +37,10 @@ class WebVerticle : AbstractVerticle() {
         router.get("/script/:scriptId").handler(scriptController::getScript)
         router.post("/script/:scriptId").handler(scriptController::postScript)
         router.delete("/script/:scriptId").handler(scriptController::deleteScript)
+
+        router.get("/time").handler{context : RoutingContext
+            -> context.response().end("${System.currentTimeMillis()}")
+        }
 
         vertx.createHttpServer().requestHandler{ router.accept(it) }.listen(8080)
     }
