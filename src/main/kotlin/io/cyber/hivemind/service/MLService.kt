@@ -148,7 +148,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, runConfig: RunConfig): String {
-
+        //todo cnmod+w training export
         val labels = hashMapOf(
                 SERVICE to TRAINING,
                 MODEL_ID to modelId.toString(),
