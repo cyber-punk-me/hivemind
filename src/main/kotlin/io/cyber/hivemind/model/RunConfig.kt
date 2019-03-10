@@ -8,10 +8,10 @@ data class RunConfig(
 ) {
 
     fun isExportSession() = getBoolOption(EXPORT_SESSION)
-    fun isPullImages() = getBoolOption(PULL_IMAGES)
+    fun isPullImages() = getBoolOption(PULL_IMAGES, true)
     fun getRuntime() = opt?.get(RUNTIME)
 
-    private fun getBoolOption(key: String): Boolean = opt?.getOrDefault(key, FALSE)?.toBoolean() ?: false
+    private fun getBoolOption(key: String, default: Boolean = false): Boolean = opt?.getOrDefault(key, FALSE)?.toBoolean() ?: default
 
     companion object {
         const val FALSE = "false"

@@ -24,8 +24,8 @@ import java.util.*
 interface FileService {
     fun getZip(type: Type, id: UUID, handler: Handler<AsyncResult<String>>)
     fun store(type: Type, id: UUID, uploadedFile: Buffer, extension: String?, handler: Handler<AsyncResult<Meta>>)
-    fun find(type: Type, meta: Meta, handler: Handler<AsyncResult<MetaList>>): MetaList
-    fun delete(type: Type, id: UUID)
+    fun find(type: Type, meta: Meta, handler: Handler<AsyncResult<MetaList>>)
+    fun delete(type: Type, id: UUID, handler: Handler<AsyncResult<Void>>)
 }
 
 class DiskFileServiceImpl(val vertx: Vertx) : FileService {
@@ -88,11 +88,11 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
         }
     }
 
-    override fun delete(type: Type, id: UUID) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    override fun delete(type: Type, id: UUID, handler: Handler<AsyncResult<Void>> ) {
+        fs.deleteRecursive("${getBaseDir(type)}$id", true , handler)
     }
 
-    override fun find(type: Type, meta: Meta, handler: Handler<AsyncResult<MetaList>>): MetaList {
+    override fun find(type: Type, meta: Meta, handler: Handler<AsyncResult<MetaList>>) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
@@ -101,13 +101,7 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    private fun getBaseDir(type: Type): String {
-        return when (type) {
-            Type.DATA -> LOCAL_DATA
-            Type.MODEL -> LOCAL_MODEL
-            Type.SCRIPT -> LOCAL_SCRIPT
-        }
-    }
+
 
     private fun getMeta(type: Type, id: UUID): Meta? {
         val metaFile = "${getBaseDir(type)}$id$META_LOCATION"
