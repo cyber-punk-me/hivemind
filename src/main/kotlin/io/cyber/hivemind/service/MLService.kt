@@ -32,7 +32,6 @@ import kotlin.collections.HashSet
 
 
 interface MLService {
-    fun prepareLocalMachine(modelId: UUID)
     fun train(scriptId: UUID, modelId: UUID, dataId: UUID, handler: Handler<AsyncResult<Meta>>)
     fun getRunConfig(scriptId: UUID): RunConfig
     fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>)
@@ -71,7 +70,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
 
-    override fun prepareLocalMachine(modelId: UUID) {
+    private fun prepareLocalMachine(modelId: UUID) {
         fileSystem.mkdirsBlocking("$LOCAL_MODEL$modelId/1")
     }
 

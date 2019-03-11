@@ -13,6 +13,7 @@ import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.file.FileSystem
+import io.vertx.core.impl.FutureFactoryImpl
 import java.io.File
 import java.util.*
 
@@ -99,7 +100,7 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
 
     //zips files and provides the name of resulting zip file
     override fun getZip(type: Type, id: UUID, handler: Handler<AsyncResult<String>>) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        handler.handle(FutureFactoryImpl().succeededFuture("/home/kyr7/Documents/cyber/hivemind/local/script/7de76908-d4d9-4ce9-98de-118a4fb3b8f8/.zip"))
     }
 
 

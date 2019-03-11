@@ -2,6 +2,7 @@ package io.cyber.hivemind.net
 
 import io.cyber.hivemind.*
 import io.cyber.hivemind.constant.*
+import io.cyber.hivemind.service.FileVerticle
 import io.cyber.hivemind.service.MLVerticle
 import io.cyber.hivemind.util.toJson
 import io.vertx.core.AsyncResult
@@ -19,7 +20,19 @@ import io.vertx.ext.web.RoutingContext
 class ModelController(val vertx: Vertx) {
 
     fun getModel(context: RoutingContext) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val modelId = context.request().getParam(MODEL_ID)
+        val cmd = Command(Type.MODEL, Verb.GET)
+        val opts = DeliveryOptions()
+        opts.addHeader(ID, modelId)
+        vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<String>> ->
+            if (ar.succeeded()) {
+                context.response().sendFile(ar.result().body())
+                context.response().end()
+            } else {
+                ar.cause().printStackTrace()
+                context.response().end(ar.toString())
+            }
+        }
     }
 
     /**
