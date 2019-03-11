@@ -7,7 +7,6 @@ import io.cyber.hivemind.MetaList
 import io.cyber.hivemind.Verb
 import io.cyber.hivemind.util.fromJson
 import io.vertx.core.*
-import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.MessageConsumer
 import java.util.*
 
@@ -47,7 +46,9 @@ class FileVerticle : AbstractVerticle() {
                 }
                 Verb.DELETE -> {
                     val id = UUID.fromString(idHeader)
-                    message.reply(fileService?.delete(command.type, id!!))
+                    message.reply(fileService?.delete(command.type, id!!, Handler { metaRes: AsyncResult<Void> ->
+                        message.reply(metaRes.result())
+                    }))
                 }
                 Verb.FIND -> {
                     val metaHeader = message.headers()[META]

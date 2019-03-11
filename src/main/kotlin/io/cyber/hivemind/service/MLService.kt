@@ -21,6 +21,7 @@ import io.cyber.hivemind.util.toJson
 import io.vertx.core.Future
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.DeliveryOptions
+import io.vertx.core.eventbus.Message
 import io.vertx.core.file.FileSystem
 import org.apache.commons.lang.SystemUtils
 import java.nio.file.Files
@@ -31,17 +32,23 @@ import kotlin.collections.HashSet
 
 
 interface MLService {
-    fun prepareMachine(modelId: UUID)
-    fun train(scriptId: UUID, modelId: UUID, dataId: UUID): Meta
+    fun prepareLocalMachine(modelId: UUID)
+    fun train(scriptId: UUID, modelId: UUID, dataId: UUID, handler: Handler<AsyncResult<Meta>>)
     fun getRunConfig(scriptId: UUID): RunConfig
     fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>)
-    fun getModelsInTraining(stopped : Boolean = false): MetaList
-    fun getModelsInServing(stopped : Boolean = false): MetaList
+    fun getModelsInTraining(stopped: Boolean = false): MetaList
+    fun getModelsInServing(stopped: Boolean = false): MetaList
 }
 
 private const val SYSTEM_PROPERTY_PROFILE_NAME = "profile"
 private const val ENV_VARIABLE_PROFILE_NAME = "HIVEMIND_PROFILE"
 private const val DEFAULT_PROFILE = "cpu"
+private const val TF_EXPORT = "/tf_export"
+private const val TF_SESSION = "/tf_session"
+private const val TF_SERVING = "tensorflow/serving:latest"
+private const val TF_SERVABlE_HOST = "localhost"
+private const val TF_SERVABlE_PORT = 8501
+private const val TF_SERVABlE_URI = "/v1/models"
 
 class MLServiceImpl(val vertx: Vertx) : MLService {
 
@@ -50,8 +57,8 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     val fileSystem: FileSystem = vertx.fileSystem()
     val yamlMapper: ObjectMapper = ObjectMapper(YAMLFactory()).also { it.registerModule(KotlinModule()) }
     val profile: String = System.getProperty(SYSTEM_PROPERTY_PROFILE_NAME)
-        ?: System.getenv(ENV_VARIABLE_PROFILE_NAME)
-        ?: DEFAULT_PROFILE
+            ?: System.getenv(ENV_VARIABLE_PROFILE_NAME)
+            ?: DEFAULT_PROFILE
 
     val killedContainers: MutableSet<String> = HashSet()
 
@@ -64,7 +71,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
 
-    override fun prepareMachine(modelId: UUID) {
+    override fun prepareLocalMachine(modelId: UUID) {
         fileSystem.mkdirsBlocking("$LOCAL_MODEL$modelId/1")
     }
 
@@ -72,7 +79,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val configsSource = Files.newBufferedReader(Paths.get("$LOCAL_SCRIPT$scriptId/$RUN_CONF_YML"))
         val runConfigsByName = yamlMapper.readValue<Map<String, RunConfig>>(configsSource)
         return runConfigsByName[profile]
-            ?: throw RuntimeException("Profile '$profile' not found, available profiles are ${runConfigsByName.keys}")
+                ?: throw RuntimeException("Profile '$profile' not found, available profiles are ${runConfigsByName.keys}")
     }
 
     private fun getMetaFromContainer(container: Container): Meta {
@@ -103,30 +110,41 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         }
     }
 
-    //todo check no such file
     //todo check statuses
-    override fun train(scriptId: UUID, modelId: UUID, dataId: UUID): Meta {
-        Thread {
-            try {
-                if (checkCanStartTraining(modelId)) {
-                    println("training model $modelId from script $scriptId, with data $dataId")
-                    removeContainers(modelId)
-                    prepareMachine(modelId)
-                    val runConfig = getRunConfig(scriptId)
+    override fun train(scriptId: UUID, modelId: UUID, dataId: UUID, handler: Handler<AsyncResult<Meta>>) {
+        try {
+            if (checkCanStartTraining(modelId)) {
+                println("training model $modelId from script $scriptId, with data $dataId")
+                removeContainers(modelId)
 
-                    val trainContainerId = trainInContainer(scriptId, modelId, dataId, runConfig)
-                    docker.waitContainer(trainContainerId)
-                    if (!killedContainers.contains(trainContainerId)) {
-                        runServableContainer(scriptId, modelId, dataId, runConfig.isPullImages())
+                removeModel(modelId, Handler { removeRes: AsyncResult<Message<Meta>> ->
+                    if (removeRes.succeeded()) {
+                        prepareLocalMachine(modelId)
+                        val runConfig = getRunConfig(scriptId)
+                        Thread {
+                            val trainContainerId = trainInContainer(scriptId, modelId, dataId, runConfig)
+                            docker.waitContainer(trainContainerId)
+                            if (!killedContainers.contains(trainContainerId)) {
+                                runServableContainer(scriptId, modelId, dataId, runConfig.isPullImages())
+                            }
+                        }.start()
+                        handler.handle(Future.succeededFuture(
+                                Meta(scriptId, modelId, dataId, RunState.TRAINING, null, null)))
+                    } else {
+                        handler.handle(Future.succeededFuture(
+                                Meta(scriptId, modelId, dataId, RunState.ERROR, null, null)))
                     }
-                } else {
-                    println("Can't start the training right now. Model $modelId is busy.")
-                }
-            } catch (t : Throwable) {
-                print(t.message)
+                })
+            } else {
+                println("Can't start the training right now. Model $modelId is busy.")
+                handler.handle(Future.succeededFuture(
+                        Meta(scriptId, modelId, dataId, RunState.ERROR, null, null)))
             }
-        }.start()
-        return Meta(scriptId, modelId, dataId, RunState.TRAINING, null, null)
+        } catch (t: Throwable) {
+            print(t.message)
+        }
+
+
     }
 
     @Synchronized
@@ -135,7 +153,6 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, runConfig: RunConfig): String {
-
         val labels = hashMapOf(
                 SERVICE to TRAINING,
                 MODEL_ID to modelId.toString(),
@@ -150,11 +167,12 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val binds = mutableListOf(
                 "$LOCAL_SCRIPT$scriptId${SEP}src".dockerHostDir() + ":/src:ro",
                 "$LOCAL_DATA$dataId".dockerHostDir() + ":/data:ro",
-                "$LOCAL_MODEL$modelId".dockerHostDir() + ":/tf_export"
+                "$LOCAL_MODEL$modelId".dockerHostDir() + ":$TF_EXPORT"
         )
 
+
         if (runConfig.isExportSession()) {
-            binds.add("$LOCAL_MODEL$modelId${SEP}tf_session".dockerHostDir() + ":/tf_session")
+            binds.add("$LOCAL_MODEL$modelId${SEP}tf_session".dockerHostDir() + ":$TF_SESSION")
         }
 
         val hostConfBuilder = HostConfig.builder()
@@ -170,7 +188,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
                 .image(runConfig.image)
                 .labels(labels)
                 .hostConfig(hostConfig)
-                .cmd(runConfig.cmd)
+                .cmd(getCMD(runConfig.cmd, runConfig.isExportSession()))
                 .build()
         val creation: ContainerCreation = docker.createContainer(containerConfig)
         val id = creation.id()
@@ -178,6 +196,18 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val meta = getModelsInTraining().first { it.modelId == modelId }
         notifyModelMetaUpdate(meta)
         return id!!
+    }
+
+    private fun getCMD(cmd: List<String>, exportSession : Boolean) : List<String> {
+        val result = cmd.toMutableList()
+        val iLast = cmd.size - 1
+        //making container directories deletable by hivemind
+        result[iLast] = "chmod -R go+w $TF_EXPORT && " + result[iLast] + " && chmod -R go+w $TF_EXPORT"
+
+        if (exportSession) {
+            result[iLast] = "chmod -R go+w $TF_SESSION && " + result[iLast] + " && chmod -R go+w $TF_SESSION"
+        }
+        return result
     }
 
     private fun notifyModelMetaUpdate(meta: Meta) {
@@ -208,7 +238,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
 
         val hostConfig: HostConfig =
                 HostConfig.builder()
-                        .binds("$LOCAL_MODEL$modelId".dockerHostDir() + ":/models/$modelId")
+                        .binds(getModelExportVolumePath(modelId) + ":/models/$modelId:ro")
                         .portBindings(portBindings)
                         .build()
 
@@ -229,6 +259,8 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         return id!!
     }
 
+    private fun getModelExportVolumePath(modelId: UUID) = "$LOCAL_MODEL$modelId".dockerHostDir()
+
     private fun removeContainers(modelId: UUID) {
         val containers = docker.listContainers(DockerClient.ListContainersParam.withStatusRunning())
         containers.filter { container ->
@@ -238,6 +270,15 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
             killedContainers.add(container.id())
             docker.killContainer(container.id())
             docker.removeContainer(container.id())
+        }
+    }
+
+    private fun removeModel(modelId: UUID, handler: Handler<AsyncResult<Message<Meta>>>) {
+        val cmd = Command(Type.MODEL, Verb.DELETE)
+        val opts = DeliveryOptions()
+        opts.addHeader(ID, modelId.toString())
+        vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<Meta>>? ->
+            handler.handle(ar)
         }
     }
 
@@ -254,13 +295,6 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         } else {
             handler.handle(Future.failedFuture("no servable"))
         }
-    }
-
-    companion object {
-        const val TF_SERVING = "tensorflow/serving:latest"
-        const val TF_SERVABlE_HOST = "localhost"
-        const val TF_SERVABlE_PORT = 8501
-        const val TF_SERVABlE_URI = "/v1/models"
     }
 
 }
