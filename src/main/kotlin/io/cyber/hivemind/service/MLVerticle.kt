@@ -38,7 +38,9 @@ class MLVerticle : AbstractVerticle() {
                     val modelIdHeader = message.headers()[MODEL_ID]
                     val modelId = UUID.fromString(modelIdHeader)
                     val model = fromJson(command.buffer!!, Model::class.java)
-                    message.reply(mLService.train(model.scriptId, modelId, model.dataId))
+                    mLService.train(model.scriptId, modelId, model.dataId, Handler { res ->
+                        message.reply(res.result())
+                    })
                 }
                 Verb.FIND -> {
                     //todo use meta as search filter

@@ -129,3 +129,23 @@ class MetaListCodec : MessageCodec<MetaList, MetaList> {
     }
 
 }
+
+class UnitCodec : MessageCodec<Unit, Unit> {
+    override fun encodeToWire(buffer: Buffer, unit: Unit) {
+    }
+
+    override fun decodeFromWire(position: Int, buffer: Buffer) {
+    }
+
+    override fun transform(customMessage: Unit) {
+        return customMessage
+    }
+
+    override fun name(): String {
+        return this.javaClass.simpleName
+    }
+
+    override fun systemCodecID(): Byte {
+        return -1
+    }
+}

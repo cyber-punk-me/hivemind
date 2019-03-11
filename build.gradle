@@ -3,7 +3,7 @@ buildscript {
         kotlin_version = '1.2.71'
         vertx_version = '3.5.3'
         jackson_version = '2.9.+'
-        docker_cli_version = '8.14.1'
+        docker_cli_version = '8.15.1'
     }
 
     repositories {
