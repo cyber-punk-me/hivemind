@@ -43,6 +43,12 @@ interface MLService {
 private const val SYSTEM_PROPERTY_PROFILE_NAME = "profile"
 private const val ENV_VARIABLE_PROFILE_NAME = "HIVEMIND_PROFILE"
 private const val DEFAULT_PROFILE = "cpu"
+private const val TF_EXPORT = "/tf_export"
+private const val TF_SESSION = "/tf_session"
+private const val TF_SERVING = "tensorflow/serving:latest"
+private const val TF_SERVABlE_HOST = "localhost"
+private const val TF_SERVABlE_PORT = 8501
+private const val TF_SERVABlE_URI = "/v1/models"
 
 class MLServiceImpl(val vertx: Vertx) : MLService {
 
@@ -104,7 +110,6 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         }
     }
 
-    //todo check no such file
     //todo check statuses
     override fun train(scriptId: UUID, modelId: UUID, dataId: UUID, handler: Handler<AsyncResult<Meta>>) {
         try {
@@ -148,7 +153,6 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, runConfig: RunConfig): String {
-        //todo cnmod+w training export
         val labels = hashMapOf(
                 SERVICE to TRAINING,
                 MODEL_ID to modelId.toString(),
@@ -163,12 +167,12 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         val binds = mutableListOf(
                 "$LOCAL_SCRIPT$scriptId${SEP}src".dockerHostDir() + ":/src:ro",
                 "$LOCAL_DATA$dataId".dockerHostDir() + ":/data:ro",
-                "$LOCAL_MODEL$modelId".dockerHostDir() + ":/tf_export"
+                "$LOCAL_MODEL$modelId".dockerHostDir() + ":$TF_EXPORT"
         )
 
 
         if (runConfig.isExportSession()) {
-            binds.add("$LOCAL_MODEL$modelId${SEP}tf_session".dockerHostDir() + ":/tf_session")
+            binds.add("$LOCAL_MODEL$modelId${SEP}tf_session".dockerHostDir() + ":$TF_SESSION")
         }
 
         val hostConfBuilder = HostConfig.builder()
@@ -177,29 +181,14 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         if (runConfig.getRuntime() != null) {
             hostConfBuilder.runtime(runConfig.getRuntime())
         }
-/*
-        val exportVolCfg = Volume.builder()
-                .name(getVolumeName(modelId))
-                .labels(labels)
-                .mountpoint(getModelExportVolumePath(modelId))
-                .build()
-        val exportVol = docker.createVolume(exportVolCfg)
-
-        docker.inspectVolume(exportVol.name()).mountpoint()*/
 
         val hostConfig: HostConfig = hostConfBuilder.build()
-/*
-                hostConfBuilder.appendBinds(HostConfig.Bind.from(exportVol)
-                .to(TF_CONTAINER_EXPORT_PATH )
-                .readOnly(false)
-                .build()).build()
-*/
 
         val containerConfig: ContainerConfig = ContainerConfig.builder().workingDir("$LOCAL_SCRIPT$scriptId".dockerHostDir())
                 .image(runConfig.image)
                 .labels(labels)
                 .hostConfig(hostConfig)
-                .cmd(runConfig.cmd)
+                .cmd(getCMD(runConfig.cmd, runConfig.isExportSession()))
                 .build()
         val creation: ContainerCreation = docker.createContainer(containerConfig)
         val id = creation.id()
@@ -209,7 +198,17 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         return id!!
     }
 
-    private fun getVolumeName(modelId: UUID) = "model_$modelId"
+    private fun getCMD(cmd: List<String>, exportSession : Boolean) : List<String> {
+        val result = cmd.toMutableList()
+        val iLast = cmd.size - 1
+        //making container directories deletable by hivemind
+        result[iLast] = "chmod -R go+w $TF_EXPORT && " + result[iLast] + " && chmod -R go+w $TF_EXPORT"
+
+        if (exportSession) {
+            result[iLast] = "chmod -R go+w $TF_SESSION && " + result[iLast] + " && chmod -R go+w $TF_SESSION"
+        }
+        return result
+    }
 
     private fun notifyModelMetaUpdate(meta: Meta) {
         val cmd = Command(Type.MODEL, Verb.POST, Buffer.buffer(toJson(meta)))
@@ -275,11 +274,6 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     private fun removeModel(modelId: UUID, handler: Handler<AsyncResult<Message<Meta>>>) {
-/*        try {
-            docker.removeVolume(getVolumeName(modelId))
-        } catch (e : Exception) {
-            //
-        }*/
         val cmd = Command(Type.MODEL, Verb.DELETE)
         val opts = DeliveryOptions()
         opts.addHeader(ID, modelId.toString())
@@ -301,14 +295,6 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         } else {
             handler.handle(Future.failedFuture("no servable"))
         }
-    }
-
-    companion object {
-        const val TF_SERVING = "tensorflow/serving:latest"
-        const val TF_SERVABlE_HOST = "localhost"
-        const val TF_SERVABlE_PORT = 8501
-        const val TF_SERVABlE_URI = "/v1/models"
-        //const val TF_CONTAINER_EXPORT_PATH = "/tf_export"
     }
 
 }

@@ -89,7 +89,8 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
     }
 
     override fun delete(type: Type, id: UUID, handler: Handler<AsyncResult<Void>> ) {
-        fs.deleteRecursive("${getBaseDir(type)}$id", true , handler)
+        //todo does it work?
+        fs.deleteRecursive("${getBaseDir(type)}$id$SEP", true , handler)
     }
 
     override fun find(type: Type, meta: Meta, handler: Handler<AsyncResult<MetaList>>) {
