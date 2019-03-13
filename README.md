@@ -10,7 +10,7 @@ Collects data, trains, serves and distributes your Tensorflow models via REST AP
     * install nvidia docker runtime https://github.com/NVIDIA/nvidia-docker
     * recommended to `docker pull` : 
        * tensorflow/serving:latest
-       * tensorflow/tensorflow:latest-gpu-py3 `OR` tensorflow/tensorflow:latest-py3 if you set up CPU training
+       * kyr7/emg-nn:nvidia `OR` kyr7/emg-nn:cpu if you set up CPU training
        * if you don't pull these images manually, they will have to be pulled before learning automatically, which is rather slow a.t.m.
 3. choose your profile from [list](https://github.com/cyber-punk-me/emg-nn/blob/master/runconf.yml)
 4. if you want training model other than cpu-based then set system property `profile` or env variable `HIVEMIND_PROFILE` with desired one
