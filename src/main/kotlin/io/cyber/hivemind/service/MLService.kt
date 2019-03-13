@@ -32,7 +32,6 @@ import kotlin.collections.HashSet
 
 
 interface MLService {
-    fun prepareLocalMachine(modelId: UUID)
     fun train(scriptId: UUID, modelId: UUID, dataId: UUID, handler: Handler<AsyncResult<Meta>>)
     fun getRunConfig(scriptId: UUID): RunConfig
     fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>)
@@ -40,6 +39,9 @@ interface MLService {
     fun getModelsInServing(stopped: Boolean = false): MetaList
 }
 
+private const val MODEL_ID = "modelId"
+private const val DATA_ID = "dataId"
+private const val SCRIPT_ID = "scriptId"
 private const val SYSTEM_PROPERTY_PROFILE_NAME = "profile"
 private const val ENV_VARIABLE_PROFILE_NAME = "HIVEMIND_PROFILE"
 private const val DEFAULT_PROFILE = "cpu"
@@ -71,7 +73,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
 
-    override fun prepareLocalMachine(modelId: UUID) {
+    private fun prepareLocalMachine(modelId: UUID) {
         fileSystem.mkdirsBlocking("$LOCAL_MODEL$modelId/1")
     }
 

@@ -1,7 +1,7 @@
 package io.cyber.hivemind.service
 
 import io.cyber.hivemind.*
-import io.cyber.hivemind.constant.MODEL_ID
+import io.cyber.hivemind.constant.ID
 import io.cyber.hivemind.util.fromJson
 import io.vertx.core.*
 import io.vertx.core.eventbus.MessageConsumer
@@ -27,7 +27,7 @@ class MLVerticle : AbstractVerticle() {
             val command = message.body()
             when (command.verb) {
                 Verb.APPLY -> {
-                    val modelIdHeader = message.headers()[MODEL_ID]
+                    val modelIdHeader = message.headers()[ID]
                     val modelId = UUID.fromString(modelIdHeader)
                     mLService.applyData(modelId!!, command.buffer!!.toJsonObject(),
                             Handler { jsonRes: AsyncResult<JsonObject> ->
@@ -35,7 +35,7 @@ class MLVerticle : AbstractVerticle() {
                             })
                 }
                 Verb.POST -> {
-                    val modelIdHeader = message.headers()[MODEL_ID]
+                    val modelIdHeader = message.headers()[ID]
                     val modelId = UUID.fromString(modelIdHeader)
                     val model = fromJson(command.buffer!!, Model::class.java)
                     mLService.train(model.scriptId, modelId, model.dataId, Handler { res ->

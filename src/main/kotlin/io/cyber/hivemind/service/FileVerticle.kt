@@ -33,7 +33,7 @@ class FileVerticle : AbstractVerticle() {
             when (command.verb) {
                 Verb.GET -> {
                     val id = UUID.fromString(idHeader)
-                    fileService?.getZip(command.type, id!!, Handler { zipRes: AsyncResult<String> ->
+                    fileService?.getZip(command.type, id!!, false, Handler { zipRes: AsyncResult<String> ->
                         message.reply(zipRes.result())
                     })
                 }

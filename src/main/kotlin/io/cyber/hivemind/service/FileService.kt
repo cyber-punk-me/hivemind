@@ -4,15 +4,13 @@ import io.cyber.hivemind.Meta
 import io.cyber.hivemind.MetaList
 import io.cyber.hivemind.Type
 import io.cyber.hivemind.constant.*
-import io.cyber.hivemind.util.fromJson
-import io.cyber.hivemind.util.getNextFileName
-import io.cyber.hivemind.util.toJson
-import io.cyber.hivemind.util.unzipData
+import io.cyber.hivemind.util.*
 import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.file.FileSystem
+import io.vertx.core.impl.FutureFactoryImpl
 import java.io.File
 import java.util.*
 
@@ -22,11 +20,13 @@ import java.util.*
  * Time: 13:56
  */
 interface FileService {
-    fun getZip(type: Type, id: UUID, handler: Handler<AsyncResult<String>>)
+    fun getZip(type: Type, id: UUID, refresh: Boolean = false, handler: Handler<AsyncResult<String>>)
     fun store(type: Type, id: UUID, uploadedFile: Buffer, extension: String?, handler: Handler<AsyncResult<Meta>>)
     fun find(type: Type, meta: Meta, handler: Handler<AsyncResult<MetaList>>)
     fun delete(type: Type, id: UUID, handler: Handler<AsyncResult<Void>>)
 }
+
+private const val ZIP_NAME = ".zip"
 
 class DiskFileServiceImpl(val vertx: Vertx) : FileService {
 
@@ -56,7 +56,7 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
 
     private fun storeScriptBuffer(dir: String, id: UUID, file: Buffer, handler: Handler<AsyncResult<Meta>>) {
         val startTime = Date()
-        val tempZip = "$dir.zip"
+        val tempZip = "$dir$ZIP_NAME"
         try {
             fs.deleteRecursiveBlocking(dir, true)
         } catch (t : Throwable) {
@@ -98,11 +98,16 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
     }
 
     //zips files and provides the name of resulting zip file
-    override fun getZip(type: Type, id: UUID, handler: Handler<AsyncResult<String>>) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    override fun getZip(type: Type, id: UUID, refresh: Boolean, handler: Handler<AsyncResult<String>>) {
+        val zipName = "${getBaseDir(type)}$id$SEP$ZIP_NAME"
+        fs.exists(zipName) { res: AsyncResult<Boolean> ->
+            if (refresh && res.succeeded() && res.result()) {
+                handler.handle(FutureFactoryImpl().succeededFuture(zipName))
+            } else {
+                makeZip(type, id, zipName, handler)
+            }
+        }
     }
-
-
 
     private fun getMeta(type: Type, id: UUID): Meta? {
         val metaFile = "${getBaseDir(type)}$id$META_LOCATION"
