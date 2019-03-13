@@ -3,6 +3,7 @@ package io.cyber.hivemind.util
 import io.cyber.hivemind.Type
 import io.cyber.hivemind.constant.HIVEMIND_FILE
 import io.cyber.hivemind.constant.SEP
+import io.cyber.hivemind.constant.ZIP_NAME
 import io.cyber.hivemind.constant.getBaseDir
 import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
@@ -100,40 +101,49 @@ fun unzipData(directory: File, zipFileName: String) {
 }
 
 
-fun zipDir(dir: String, zos: ZipOutputStream, zipName: String? = null) {
+fun zipDir(dir: String, zos: ZipOutputStream, pathInDir : String = "") {
     val zipDir = File(dir)
-    val ls = zipDir.list { f, s -> !(f.isDirectory && s.startsWith(HIVEMIND_FILE)) }
+    val ls = zipDir.list { f, s ->
+        !(pathInDir == "" && (s == HIVEMIND_FILE || s == ZIP_NAME)) }
     val readBuffer = ByteArray(BUFFER_SIZE)
     var bytesIn = 0
     for (i in ls!!.indices) {
         val f = File(zipDir, ls[i])
-        if (f.name == zipName) {
-            continue
-        }
         if (f.isDirectory) {
             val filePath = f.path
-            zipDir(filePath, zos)
-        }
-        val fis = FileInputStream(f)
-        val anEntry = ZipEntry(f.path)
-        zos.putNextEntry(anEntry)
-        bytesIn = fis.read(readBuffer)
-        while (bytesIn != -1) {
-            zos.write(readBuffer, 0, bytesIn)
+            zipDir(filePath, zos, pathInDir + "$SEP${f.name}")
+        } else {
+            val fis = FileInputStream(f)
+            val anEntry = ZipEntry(pathInDir + SEP + f.name)
+            zos.putNextEntry(anEntry)
             bytesIn = fis.read(readBuffer)
+            while (bytesIn != -1) {
+                zos.write(readBuffer, 0, bytesIn)
+                bytesIn = fis.read(readBuffer)
+            }
+            fis.close()
         }
-        fis.close()
     }
 }
 
-fun makeZip(type: Type, id: UUID, zipName: String, handler: Handler<AsyncResult<String>>) {
+fun makeZip(type: Type, id: UUID, handler: Handler<AsyncResult<String>>) {
     try {
+        val dir = "${getBaseDir(type)}$id$SEP"
+        val zipName = dir + ZIP_NAME
         val zos = ZipOutputStream(FileOutputStream(zipName))
-        zipDir("${getBaseDir(type)}$id$SEP", zos)
+        zipDir(dir, zos)
         zos.close()
         handler.handle(FutureFactoryImpl().succeededFuture(zipName))
     } catch (e: Exception) {
         handler.handle(FutureFactoryImpl().failedFuture(e))
     }
 
+}
+
+fun main(args: Array<String>) {
+    val type = Type.MODEL
+    val id = UUID.fromString("1d722019-c892-44bc-844b-eb5708d55987")
+    makeZip(type, id, Handler { res ->
+        println(res)
+    })
 }

@@ -26,7 +26,6 @@ interface FileService {
     fun delete(type: Type, id: UUID, handler: Handler<AsyncResult<Void>>)
 }
 
-private const val ZIP_NAME = ".zip"
 
 class DiskFileServiceImpl(val vertx: Vertx) : FileService {
 
@@ -104,7 +103,7 @@ class DiskFileServiceImpl(val vertx: Vertx) : FileService {
             if (refresh && res.succeeded() && res.result()) {
                 handler.handle(FutureFactoryImpl().succeededFuture(zipName))
             } else {
-                makeZip(type, id, zipName, handler)
+                makeZip(type, id, handler)
             }
         }
     }
