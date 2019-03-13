@@ -7,7 +7,6 @@ import io.cyber.hivemind.Verb
 import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.service.FileVerticle
 import io.cyber.hivemind.util.addNotNullHeader
-import io.cyber.hivemind.util.sendZipFile
 import io.cyber.hivemind.util.toJson
 import io.vertx.core.AsyncResult
 import io.vertx.core.Vertx
@@ -16,32 +15,19 @@ import io.vertx.core.eventbus.Message
 import io.vertx.ext.web.RoutingContext
 
 
-class DataController(val vertx: Vertx) {
+class DataController(vertx: Vertx) : Controller(vertx, Type.DATA) {
 
-    fun getData(context: RoutingContext) {
-        val dataId = context.request().getParam(DATA_ID)
-        val cmd = Command(Type.DATA, Verb.GET)
-        val opts = DeliveryOptions()
-        opts.addHeader(ID, dataId)
-        vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<String>>? ->
-            if (ar!!.succeeded()) {
-                sendZipFile(context, ar.result().body())
-            } else {
-                ar.cause().printStackTrace()
-                context.response().end(ar.toString())
-            }
-        }
-    }
+    fun getData(context: RoutingContext) = getZip(context)
 
     fun postData(context: RoutingContext) {
         val cmd = Command(Type.DATA, Verb.POST, context.body)
         val opts = DeliveryOptions()
-        val dataId = context.request().getParam(DATA_ID)
+        val dataId = context.request().getParam(ID)
         val ext = context.request().getParam(EXT)
         opts.addHeader(ID, dataId)
         opts.addNotNullHeader(EXT, ext)
-        vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<Meta>>? ->
-            if (ar!!.succeeded()) {
+        vertx.eventBus().send(FileVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<Meta>> ->
+            if (ar.succeeded()) {
                 context.response().end(toJson(ar.result().body()))
             } else {
                 ar.cause().printStackTrace()
@@ -50,11 +36,9 @@ class DataController(val vertx: Vertx) {
         }
     }
 
-    fun deleteData(context: RoutingContext) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
 
-    fun findData(context: RoutingContext) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    fun findData(context: RoutingContext) = find(context)
+
+    fun deleteData(context: RoutingContext) = delete(context)
+
 }

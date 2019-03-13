@@ -39,6 +39,9 @@ interface MLService {
     fun getModelsInServing(stopped: Boolean = false): MetaList
 }
 
+private const val MODEL_ID = "modelId"
+private const val DATA_ID = "dataId"
+private const val SCRIPT_ID = "scriptId"
 private const val SYSTEM_PROPERTY_PROFILE_NAME = "profile"
 private const val ENV_VARIABLE_PROFILE_NAME = "HIVEMIND_PROFILE"
 private const val DEFAULT_PROFILE = "cpu"
