@@ -10,6 +10,8 @@ const val SERVICE = "service"
 const val TRAINING = "training"
 const val SERVING = "serving"
 const val RUN_CONF_YML = "runconf.yml"
+const val ZIP_NAME = ".zip"
+
 
 val WORK_DIR = System.getProperty("user.dir")!!
 val SEP = File.separator!!
