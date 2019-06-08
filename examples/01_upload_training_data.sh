@@ -5,10 +5,10 @@
 rm -f data.zip
 rm -r data
 
-wget -O data.zip https://github.com/cyber-punk-me/emg-nn/archive/master.zip
+wget -O data.zip https://github.com/cyber-punk-me/emg-4-classes/archive/master.zip
 unzip data.zip -d data
 
-for filename in data/emg-nn-master/data/*.csv; do
+for filename in data/emg-4-classes-master/*.csv; do
     echo "uploading $filename"
     #example of posting data the way an app could do it
     curl --data-binary @- -X POST http://localhost:8080/data/5d335160-bd2a-45e4-9199-8105a38941ad?ext=csv \
