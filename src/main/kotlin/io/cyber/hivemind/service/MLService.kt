@@ -73,8 +73,10 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
 
-    private fun prepareLocalMachine(modelId: UUID) {
+    private fun prepareLocalMachine(scriptId: UUID, modelId: UUID, dataId: UUID): Boolean {
         fileSystem.mkdirsBlocking("$LOCAL_MODEL$modelId/1")
+        return fileSystem.existsBlocking("$LOCAL_SCRIPT$scriptId") &&
+                fileSystem.existsBlocking("$LOCAL_DATA$dataId")
     }
 
     override fun getRunConfig(scriptId: UUID): RunConfig {
@@ -91,7 +93,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
             SERVING -> RunState.SERVING
             else -> RunState.ERROR
         }
-        return Meta(labels[SCRIPT_ID], labels[MODEL_ID], labels[DATA_ID], state, Date(container.created()), null)
+        return Meta(labels[SCRIPT_ID], labels[MODEL_ID], labels[DATA_ID], state, Date(container.created()))
     }
 
     override fun getModelsInTraining(stopped: Boolean): MetaList {
@@ -112,7 +114,6 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
         }
     }
 
-    //todo check statuses
     override fun train(scriptId: UUID, modelId: UUID, dataId: UUID, handler: Handler<AsyncResult<Meta>>) {
         try {
             if (checkCanStartTraining(modelId)) {
@@ -120,8 +121,7 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
                 removeContainers(modelId)
 
                 removeModel(modelId, Handler { removeRes: AsyncResult<Message<Meta>> ->
-                    if (removeRes.succeeded()) {
-                        prepareLocalMachine(modelId)
+                    if (removeRes.succeeded() && prepareLocalMachine(scriptId, modelId, dataId)) {
                         val runConfig = getRunConfig(scriptId)
                         Thread {
                             val trainContainerId = trainInContainer(scriptId, modelId, dataId, runConfig)
@@ -131,16 +131,16 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
                             }
                         }.start()
                         handler.handle(Future.succeededFuture(
-                                Meta(scriptId, modelId, dataId, RunState.TRAINING, null, null)))
+                                Meta(scriptId, modelId, dataId, RunState.TRAINING)))
                     } else {
                         handler.handle(Future.succeededFuture(
-                                Meta(scriptId, modelId, dataId, RunState.ERROR, null, null)))
+                                Meta(scriptId, modelId, dataId, RunState.ERROR)))
                     }
                 })
             } else {
                 println("Can't start the training right now. Model $modelId is busy.")
                 handler.handle(Future.succeededFuture(
-                        Meta(scriptId, modelId, dataId, RunState.ERROR, null, null)))
+                        Meta(scriptId, modelId, dataId, RunState.ERROR)))
             }
         } catch (t: Throwable) {
             print(t.message)
@@ -253,12 +253,12 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
                 .build()
 
         val creation: ContainerCreation = docker.createContainer(containerConfig)
-        val id = creation.id()
+        val id = creation.id()!!
         //val info = docker.inspectContainer(id)
         docker.startContainer(id)
         val meta = getModelsInServing().first { it.modelId == modelId }
         notifyModelMetaUpdate(meta)
-        return id!!
+        return id
     }
 
     private fun getModelExportVolumePath(modelId: UUID) = "$LOCAL_MODEL$modelId".dockerHostDir()
@@ -285,7 +285,6 @@ class MLServiceImpl(val vertx: Vertx) : MLService {
     }
 
     override fun applyData(modelId: UUID, json: JsonObject, handler: Handler<AsyncResult<JsonObject>>) {
-        //todo faster model lookup
         val modelMeta = getModelsInServing().filter { meta -> meta.modelId == modelId }
         if (!modelMeta.isEmpty() && RunState.SERVING == modelMeta[0].state) {
             client.post(TF_SERVABlE_PORT, TF_SERVABlE_HOST, "$TF_SERVABlE_URI/$modelId:predict")
