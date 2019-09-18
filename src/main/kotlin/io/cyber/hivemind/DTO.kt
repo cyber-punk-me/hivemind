@@ -25,8 +25,8 @@ data class Model(val dataId: UUID, val scriptId: UUID)
 data class Command(val type: Type, val verb: Verb, val buffer: Buffer? = null)
 
 data class Meta(val scriptId: UUID?, val modelId: UUID?, val dataId: UUID?,
-                val state: RunState?, val startTime: Date?, val endTime: Date?) {
-    constructor(scriptId: String?, modelId: String?, dataId: String?, state: RunState, startTime: Date?, endTime: Date?)
+                val state: RunState?, val startTime: Date? = null, val endTime: Date? = null) {
+    constructor(scriptId: String?, modelId: String?, dataId: String?, state: RunState, startTime: Date? = null, endTime: Date? = null)
             : this(scriptId.toUUID(), modelId.toUUID(), dataId.toUUID(), state, startTime, endTime)
 }
 
