@@ -3,9 +3,11 @@ package io.cyber.hivemind.service
 import io.cyber.hivemind.*
 import io.cyber.hivemind.constant.ID
 import io.cyber.hivemind.util.fromJson
+import io.cyber.hivemind.util.toJson
 import io.vertx.core.*
 import io.vertx.core.eventbus.MessageConsumer
 import io.vertx.core.json.JsonObject
+import io.vertx.core.logging.LoggerFactory
 import java.util.*
 
 class MLVerticle : AbstractVerticle() {
@@ -22,7 +24,7 @@ class MLVerticle : AbstractVerticle() {
     override fun start(startFuture: Future<Void>) {
         val stoppedServ = mLService.getModelsInServing(true)
         //todo restart containers
-        print(stoppedServ)
+        logger.info(toJson(stoppedServ))
         consumer = vertx.eventBus().consumer<Command>(MLVerticle::class.java.name) { message ->
             val command = message.body()
             when (command.verb) {
@@ -58,5 +60,9 @@ class MLVerticle : AbstractVerticle() {
 
     override fun stop(stopFuture: Future<Void>) {
         consumer!!.unregister(stopFuture)
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(MLVerticle::class.java)
     }
 }
