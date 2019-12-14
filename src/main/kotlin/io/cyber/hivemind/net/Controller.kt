@@ -2,7 +2,7 @@ package io.cyber.hivemind.net
 
 import io.cyber.hivemind.Command
 import io.cyber.hivemind.Meta
-import io.cyber.hivemind.Type
+import io.cyber.hivemind.ResourceType
 import io.cyber.hivemind.Verb
 import io.cyber.hivemind.constant.ID
 import io.cyber.hivemind.service.FileVerticle
@@ -13,7 +13,7 @@ import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.Message
 import io.vertx.ext.web.RoutingContext
 
-open class Controller(val vertx: Vertx, val type: Type) {
+open class Controller(val vertx: Vertx, val type: ResourceType) {
 
     fun postZip(context: RoutingContext) {
         val upload = context.fileUploads().iterator().next()!!

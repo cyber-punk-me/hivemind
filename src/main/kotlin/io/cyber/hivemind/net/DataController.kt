@@ -2,7 +2,7 @@ package io.cyber.hivemind.net
 
 import io.cyber.hivemind.Command
 import io.cyber.hivemind.Meta
-import io.cyber.hivemind.Type
+import io.cyber.hivemind.ResourceType
 import io.cyber.hivemind.Verb
 import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.service.FileVerticle
@@ -15,12 +15,12 @@ import io.vertx.core.eventbus.Message
 import io.vertx.ext.web.RoutingContext
 
 
-class DataController(vertx: Vertx) : Controller(vertx, Type.DATA) {
+class DataController(vertx: Vertx) : Controller(vertx, ResourceType.DATA) {
 
     fun getData(context: RoutingContext) = getZip(context)
 
     fun postData(context: RoutingContext) {
-        val cmd = Command(Type.DATA, Verb.POST, context.body)
+        val cmd = Command(ResourceType.DATA, Verb.POST, context.body)
         val opts = DeliveryOptions()
         val dataId = context.request().getParam(ID)
         val ext = context.request().getParam(EXT)

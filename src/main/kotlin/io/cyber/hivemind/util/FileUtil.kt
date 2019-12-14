@@ -1,13 +1,11 @@
 package io.cyber.hivemind.util
 
-import io.cyber.hivemind.Type
-import io.cyber.hivemind.constant.HIVEMIND_FILE
-import io.cyber.hivemind.constant.SEP
-import io.cyber.hivemind.constant.ZIP_NAME
-import io.cyber.hivemind.constant.getBaseDir
-import io.vertx.core.AsyncResult
-import io.vertx.core.Handler
-import io.vertx.core.impl.FutureFactoryImpl
+import io.cyber.hivemind.ResourceType
+import io.cyber.hivemind.constant.*
+import io.ktor.util.KtorExperimentalAPI
+import io.ktor.util.cio.writeChannel
+import kotlinx.coroutines.io.ByteReadChannel
+import kotlinx.coroutines.io.copyAndClose
 import org.apache.commons.lang.SystemUtils
 import java.io.*
 import java.util.*
@@ -24,18 +22,19 @@ import java.util.zip.ZipOutputStream
 
 const val BUFFER_SIZE = 4096
 
-fun getNextFileName(files: List<String>?, extension: String?): String {
-    val extRes = extension?.let { ".$extension" } ?: ""
-    val defaultName = "0$extRes"
-    if (files == null || files.isEmpty()) return defaultName
-    val maxFile: Int? = files.map { f -> f.split(File.separator).last() }.map { s -> s.cutEtension() }.filter { f -> isInteger(f) }.map { s -> Integer.parseInt(s) }.max()
+fun getNextDataFileName(directory: File, extension: String = ""): String {
+    val files = (directory.listFiles()?.asList() as List<File>).map { it.name }
+    val defaultName = "0$extension"
+    if (files.isEmpty()) return defaultName
+    val maxFile: Int? = files.map { f -> f.split(File.separator).last() }.map { s -> s.cutExtension() }
+            .filter { f -> isInteger(f) }.map { s -> Integer.parseInt(s) }.max()
     return when {
-        maxFile != null -> "" + (maxFile + 1) + extRes
+        maxFile != null -> "" + (maxFile + 1) + extension
         else -> defaultName
     }
 }
 
-private fun String.cutEtension(): String {
+private fun String.cutExtension(): String {
     if (!contains(".")) return this
     return split(".")[0]
 }
@@ -57,8 +56,8 @@ fun isInteger(s: String): Boolean {
     return true
 }
 
-fun unzipData(directory: File, zipFileName: String) {
-    BufferedInputStream(FileInputStream(zipFileName)).use { `is` ->
+fun unzipData(destination: File, zipFile: File) {
+    BufferedInputStream(FileInputStream(zipFile)).use { `is` ->
         var firstEntryRead = true
         var rootEntryDir: String? = null
         ZipInputStream(BufferedInputStream(`is`)).use { zis ->
@@ -71,7 +70,7 @@ fun unzipData(directory: File, zipFileName: String) {
                             rootEntryDir = entry.name
                         }
                         val resDirName = if (rootEntryDir == null) entryName else entryName.substring(rootEntryDir!!.length)
-                        if (!resDirName.isEmpty() && !File(directory, resDirName).mkdir()) {
+                        if (!resDirName.isEmpty() && !File(destination, resDirName).mkdir()) {
                             print("Failed to create directory")
                             return
                         }
@@ -80,7 +79,7 @@ fun unzipData(directory: File, zipFileName: String) {
                         var dest: BufferedOutputStream? = null
                         try {
                             val resFileNme = if (rootEntryDir == null) entryName else entryName.substring(rootEntryDir!!.length)
-                            val fos = FileOutputStream(File(directory, resFileNme))
+                            val fos = FileOutputStream(File(destination, resFileNme))
                             dest = BufferedOutputStream(fos, BUFFER_SIZE)
                             var count = zis.read(buff, 0, BUFFER_SIZE)
                             while (count != -1) {
@@ -100,11 +99,27 @@ fun unzipData(directory: File, zipFileName: String) {
     }
 }
 
+/**
+ * zip a given resource
+ */
+fun makeZip(type: ResourceType, id: UUID): File {
+    val dir = "${getBaseDir(type)}$id$SEP"
+    val zipName = dir + ZIP_NAME
+    val zos = ZipOutputStream(FileOutputStream(zipName))
+    zipDir(dir, zos)
+    zos.close()
+    return File(zipName)
+}
 
-fun zipDir(dir: String, zos: ZipOutputStream, pathInDir : String = "") {
+
+@KtorExperimentalAPI
+suspend fun ByteReadChannel.writeToFile(outFile: File) = copyAndClose(outFile.writeChannel())
+
+private fun zipDir(dir: String, zos: ZipOutputStream, pathInDir: String = "") {
     val zipDir = File(dir)
     val ls = zipDir.list { f, s ->
-        !(pathInDir == "" && (s == HIVEMIND_FILE || s == ZIP_NAME)) }
+        !(pathInDir == "" && (s == HIVEMIND_FILE || s == ZIP_NAME))
+    }
     val readBuffer = ByteArray(BUFFER_SIZE)
     var bytesIn = 0
     for (i in ls!!.indices) {
@@ -126,24 +141,10 @@ fun zipDir(dir: String, zos: ZipOutputStream, pathInDir : String = "") {
     }
 }
 
-fun makeZip(type: Type, id: UUID, handler: Handler<AsyncResult<String>>) {
-    try {
-        val dir = "${getBaseDir(type)}$id$SEP"
-        val zipName = dir + ZIP_NAME
-        val zos = ZipOutputStream(FileOutputStream(zipName))
-        zipDir(dir, zos)
-        zos.close()
-        handler.handle(FutureFactoryImpl().succeededFuture(zipName))
-    } catch (e: Exception) {
-        handler.handle(FutureFactoryImpl().failedFuture(e))
-    }
 
-}
 
 fun main(args: Array<String>) {
-    val type = Type.MODEL
+    val type = ResourceType.MODEL
     val id = UUID.fromString("1d722019-c892-44bc-844b-eb5708d55987")
-    makeZip(type, id, Handler { res ->
-        println(res)
-    })
+    println(makeZip(type, id))
 }

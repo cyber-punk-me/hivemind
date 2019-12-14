@@ -16,14 +16,14 @@ import io.vertx.ext.web.RoutingContext
  * Date: 22/07/2018
  * Time: 01:20
  */
-class ModelController(vertx: Vertx) : Controller(vertx, Type.MODEL) {
+class ModelController(vertx: Vertx) : Controller(vertx, ResourceType.MODEL) {
 
     /**
      * Start training process
      */
     fun postModel(context: RoutingContext) {
         val modelId = context.request().getParam(ID)
-        val cmd = Command(Type.MODEL, Verb.POST, context.body)
+        val cmd = Command(ResourceType.MODEL, Verb.POST, context.body)
         val opts = DeliveryOptions()
         opts.addHeader(ID, modelId)
         vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<Meta>> ->
@@ -57,7 +57,7 @@ class ModelController(vertx: Vertx) : Controller(vertx, Type.MODEL) {
 
     fun applyModelToInput(context: RoutingContext) {
         val modelId = context.request().getParam(ID)
-        val cmd = Command(Type.MODEL, Verb.APPLY, context.body)
+        val cmd = Command(ResourceType.MODEL, Verb.APPLY, context.body)
         val opts = DeliveryOptions()
         opts.addHeader(ID, modelId)
         vertx.eventBus().send(MLVerticle::class.java.name, cmd, opts) { ar: AsyncResult<Message<JsonObject>>? ->

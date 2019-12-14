@@ -1,6 +1,6 @@
 package io.cyber.hivemind.constant
 
-import io.cyber.hivemind.Type
+import io.cyber.hivemind.ResourceType
 import java.io.File
 
 const val ID = "id"
@@ -25,11 +25,11 @@ val META_LOCATION = "$HIVEMIND_DIR$META"
 
 const val DOCKER_LOCAL_URI_UNIX = "unix:///var/run/docker.sock"
 
-fun getBaseDir(type: Type): String {
+fun getBaseDir(type: ResourceType): String {
     return when (type) {
-        Type.DATA -> LOCAL_DATA
-        Type.MODEL -> LOCAL_MODEL
-        Type.SCRIPT -> LOCAL_SCRIPT
+        ResourceType.DATA -> LOCAL_DATA
+        ResourceType.MODEL -> LOCAL_MODEL
+        ResourceType.SCRIPT -> LOCAL_SCRIPT
     }
 }
 

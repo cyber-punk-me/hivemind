@@ -1,10 +1,11 @@
 buildscript {
     ext {
-        kotlin_version = '1.3.50'
+        kotlin_version = '1.3.60'
         vertx_version = '3.5.3'
         jackson_version = '2.9.+'
         docker_cli_version = '8.15.1'
         log4j_version = '2.12.1'
+        ktor_version = '1.2.6'
     }
 
     repositories {
@@ -17,24 +18,9 @@ buildscript {
     }
 }
 
-plugins {
-    id 'java'
-    id 'org.jetbrains.kotlin.jvm' version '1.3.50'
-    id 'application'
-    id 'com.github.johnrengelman.shadow' version '1.2.4'
+repositories {
+    jcenter()
 }
-
-tasks.withType(JavaCompile) {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
-}
-tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
-}
-mainClassName = 'io.cyber.hivemind.WebVerticle'
-
 repositories {
     jcenter()
     mavenCentral()
@@ -43,9 +29,29 @@ repositories {
     }
 }
 
+apply plugin: 'java'
+apply plugin: 'kotlin'
+
+
+sourceCompatibility = 1.8
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+kotlin {
+    experimental {
+        coroutines "enable"
+    }
+}
+
 dependencies {
     compile "com.fasterxml.jackson.module:jackson-module-kotlin:$jackson_version"
     compile "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jackson_version"
+    compile "io.ktor:ktor-server-netty:$ktor_version"
+    compile "io.ktor:ktor-locations:$ktor_version"
     compile "io.vertx:vertx-core:$vertx_version"
     compile "io.vertx:vertx-lang-kotlin:$vertx_version"
     compile "io.vertx:vertx-shell:$vertx_version"
@@ -56,34 +62,6 @@ dependencies {
     compile "com.spotify:docker-client:$docker_cli_version"
     testCompile "junit:junit:4.12"
     testCompile "io.vertx:vertx-unit:$vertx_version"
-}
-
-// Redeploy watcher.
-run {
-    args = ['run', mainClassName,
-            "--launcher-class=$mainClassName",
-            "--redeploy=src/**/*.*",
-            "--on-redeploy=./gradlew classes"
-    ]
-}
-
-// Naming and packaging settings for the "shadow jar".
-shadowJar {
-    baseName = 'app'
-    classifier = 'shadow'
-
-    mergeServiceFiles {
-        include 'META-INF/services/io.vertx.core.spi.VerticleFactory'
-    }
-}
-
-task wrapper(type: Wrapper) {
-    gradleVersion = '4.5.1'
-}
-
-// Heroku relies on the 'stage' task to deploy.
-task stage {
-    dependsOn shadowJar
 }
 
 sourceSets {

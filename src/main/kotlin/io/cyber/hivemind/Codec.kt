@@ -53,7 +53,7 @@ class CommandCodec : MessageCodec<Command, Command> {
         } else {
             null
         }
-        return Command(Type.valueOf(type), Verb.valueOf(verb), cmdBuffer)
+        return Command(ResourceType.valueOf(type), Verb.valueOf(verb), cmdBuffer)
     }
 
     override fun transform(customMessage: Command): Command {

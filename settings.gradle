@@ -1,6 +1,6 @@
 if (!JavaVersion.current().java8Compatible) {
   throw new IllegalStateException('''A Haiku:
-                                    |  This needs Java 8,
+                                    |  This needs Java 8 at least,
                                     |  You are using something else,
                                     |  Refresh. Try again.'''.stripMargin())
 }

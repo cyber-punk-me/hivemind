@@ -1,18 +1,12 @@
 package io.cyber.hivemind
 
-import io.vertx.core.buffer.Buffer
 import java.util.*
-import kotlin.collections.ArrayList
 
 /**
  * Created by kyr7 on 30/06/2018.
  */
 
-enum class Verb {
-    POST, GET, DELETE, FIND, APPLY
-}
-
-enum class Type {
+enum class ResourceType {
     DATA, MODEL, SCRIPT
 }
 
@@ -20,21 +14,14 @@ enum class RunState {
     NEW, TRAINING, SERVING, ERROR
 }
 
-data class Model(val dataId: UUID, val scriptId: UUID)
+data class ScriptMeta(val scriptId: UUID, val created: Date)
 
-data class Command(val type: Type, val verb: Verb, val buffer: Buffer? = null)
+data class DataMeta(val dataId: UUID, val created: Date, val updated: Date)
 
-data class Meta(val scriptId: UUID?, val modelId: UUID?, val dataId: UUID?,
-                val state: RunState?, val startTime: Date? = null, val endTime: Date? = null) {
-    constructor(scriptId: String?, modelId: String?, dataId: String?, state: RunState, startTime: Date? = null, endTime: Date? = null)
-            : this(scriptId.toUUID(), modelId.toUUID(), dataId.toUUID(), state, startTime, endTime)
+data class ModelMeta(val scriptId: UUID, val modelId: UUID, val dataId: UUID,
+                     val state: RunState, val startTime: Date, val trainedTime: Date? = null) {
+    constructor(scriptId: String, modelId: String, dataId: String, state: RunState, startTime: Date) :
+            this(scriptId.toUUID(), modelId.toUUID(), dataId.toUUID(), state, startTime)
 }
 
-fun String?.toUUID() : UUID? = if (isNullOrEmpty()) null else UUID.fromString(this)
-
-
-class MetaList() : ArrayList<Meta>() {
-    constructor(addUs : Collection<Meta>) : this() {
-        addAll(addUs)
-    }
-}
+fun String.toUUID(): UUID = UUID.fromString(this)

@@ -1,6 +1,6 @@
 package io.cyber.hivemind.service
 
-import io.cyber.hivemind.util.getNextFileName
+import io.cyber.hivemind.util.getNextDataFileName
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
 import junit.framework.Assert.assertEquals
@@ -14,16 +14,16 @@ class WebVerticleTest {
 
     @Test
     fun testDownloadData(tc: TestContext) {
-        var file = getNextFileName(null, "csv")
+        var file = getNextDataFileName(null, "csv")
         assertEquals("0", file)
 
-        file = getNextFileName(Arrays.asList("w", "0", "1000"), "csv")
+        file = getNextDataFileName(Arrays.asList("w", "0", "1000"), "csv")
         assertEquals("1001", file)
 
-        file = getNextFileName(Arrays.asList("1"), "csv")
+        file = getNextDataFileName(Arrays.asList("1"), "csv")
         assertEquals("2", file)
 
-        file = getNextFileName(ArrayList(), "csv")
+        file = getNextDataFileName(ArrayList(), "csv")
         assertEquals("0", file)
     }
 

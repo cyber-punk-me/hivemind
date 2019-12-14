@@ -12,7 +12,7 @@ class CodecTest {
 
     @Test
     fun testCommand(tc: TestContext) {
-        val command = Command(Type.MODEL, Verb.FIND, Buffer.buffer("hello"))
+        val command = Command(ResourceType.MODEL, Verb.FIND, Buffer.buffer("hello"))
         val transport = Buffer.buffer()
         val codec = CommandCodec()
         codec.encodeToWire(transport, command)
@@ -22,7 +22,7 @@ class CodecTest {
 
     @Test
     fun testCommandEmpty(tc: TestContext) {
-        val command = Command(Type.MODEL, Verb.FIND, null)
+        val command = Command(ResourceType.MODEL, Verb.FIND, null)
         val transport = Buffer.buffer()
         val codec = CommandCodec()
         codec.encodeToWire(transport, command)
