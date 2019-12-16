@@ -13,9 +13,10 @@ import io.ktor.samples.youkube.uploadScript
  * Script upload.
  */
 @Location("/script/{scriptId}")
-class Upload
+class Script(val scriptId: String)
 
 
+@KtorExperimentalLocationsAPI
 fun Application.main() {
 
     // Allows to use classes annotated with @Location to represent URLs.
@@ -26,6 +27,6 @@ fun Application.main() {
     val fileService: FileService = DiskFileServiceImpl()
 
     routing {
-        uploadScript(database, uploadDir)
+        uploadScript(fileService)
     }
 }

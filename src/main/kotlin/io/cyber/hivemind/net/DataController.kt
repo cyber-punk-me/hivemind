@@ -1,5 +1,6 @@
 package io.cyber.hivemind.net
 
+/*
 import io.cyber.hivemind.Command
 import io.cyber.hivemind.Meta
 import io.cyber.hivemind.ResourceType
@@ -42,3 +43,4 @@ class DataController(vertx: Vertx) : Controller(vertx, ResourceType.DATA) {
     fun deleteData(context: RoutingContext) = delete(context)
 
 }
+*/

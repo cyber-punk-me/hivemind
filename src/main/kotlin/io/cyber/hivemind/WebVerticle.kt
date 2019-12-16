@@ -1,4 +1,5 @@
 package io.cyber.hivemind
+/*
 
 import io.cyber.hivemind.net.DataController
 import io.cyber.hivemind.net.ModelController
@@ -59,3 +60,4 @@ class WebVerticle : AbstractVerticle() {
 fun main(args : Array<String>) {
     WebVerticle.main(args)
 }
+*/

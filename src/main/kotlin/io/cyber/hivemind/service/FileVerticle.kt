@@ -1,4 +1,5 @@
 package io.cyber.hivemind.service
+/*
 
 import io.cyber.hivemind.Command
 import io.cyber.hivemind.constant.*
@@ -10,11 +11,13 @@ import io.vertx.core.*
 import io.vertx.core.eventbus.MessageConsumer
 import java.util.*
 
+*/
 /**
  * User: kirillskiy
  * Date: 22/07/2018
  * Time: 14:09
- */
+ *//*
+
 class FileVerticle : AbstractVerticle() {
 
     var fileService: FileService? = null
@@ -66,4 +69,4 @@ class FileVerticle : AbstractVerticle() {
     override fun stop(stopFuture: Future<Void>) {
         consumer!!.unregister(stopFuture)
     }
-}
+}*/

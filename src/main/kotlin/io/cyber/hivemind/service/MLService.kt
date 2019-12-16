@@ -1,5 +1,6 @@
 package io.cyber.hivemind.service
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.KotlinModule
@@ -8,7 +9,6 @@ import com.spotify.docker.client.DefaultDockerClient
 import com.spotify.docker.client.DockerClient
 import com.spotify.docker.client.messages.*
 import io.cyber.hivemind.*
-import io.vertx.core.json.JsonObject
 import java.util.*
 import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.model.RunConfig
@@ -28,7 +28,7 @@ import kotlin.collections.HashSet
 interface MLService {
     fun train(scriptId: UUID, modelId: UUID, dataId: UUID): ModelMeta
     fun getRunConfig(scriptId: UUID): RunConfig
-    suspend fun applyData(modelId: UUID, json: JsonObject): JsonObject
+    suspend fun applyData(modelId: UUID, json: JsonNode): JsonNode
     fun getModelsInTraining(stopped: Boolean = false): List<ModelMeta>
     fun getModelsInServing(stopped: Boolean = false): List<ModelMeta>
 }
@@ -254,7 +254,7 @@ class MLServiceImpl(val fileService: FileService) : MLService {
         }
     }
 
-    override suspend fun applyData(modelId: UUID, json: JsonObject) : JsonObject {
+    override suspend fun applyData(modelId: UUID, json: JsonNode) : JsonNode {
         val modelMeta = getModelsInServing().filter { meta -> meta.modelId == modelId }
         if (!modelMeta.isEmpty() && RunState.SERVING == modelMeta[0].state) {
             return httpClient.post(scheme = "http", host = TF_SERVABlE_HOST, port = TF_SERVABlE_PORT, path = "$TF_SERVABlE_URI/$modelId:predict",

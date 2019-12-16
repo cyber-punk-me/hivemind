@@ -1,5 +1,5 @@
 package io.cyber.hivemind
-
+/*
 import io.cyber.hivemind.util.fromJson
 import io.cyber.hivemind.util.toJson
 import io.vertx.core.buffer.Buffer
@@ -11,6 +11,7 @@ import io.vertx.core.json.JsonObject
  * Date: 28/07/2018
  * Time: 01:50
  */
+
 
 class CommandCodec : MessageCodec<Command, Command> {
 
@@ -149,3 +150,4 @@ class UnitCodec : MessageCodec<Unit, Unit> {
         return -1
     }
 }
+*/

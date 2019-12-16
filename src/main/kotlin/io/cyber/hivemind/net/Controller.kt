@@ -1,4 +1,5 @@
 package io.cyber.hivemind.net
+/*
 
 import io.cyber.hivemind.Command
 import io.cyber.hivemind.Meta
@@ -73,3 +74,4 @@ open class Controller(val vertx: Vertx, val type: ResourceType) {
     }
 
 }
+*/

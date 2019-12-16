@@ -1,5 +1,6 @@
 package io.cyber.hivemind.net
 
+/*
 import io.cyber.hivemind.*
 import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.service.MLVerticle
@@ -11,16 +12,20 @@ import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
 
+*/
 /**
  * User: kirillskiy
  * Date: 22/07/2018
  * Time: 01:20
- */
+ *//*
+
 class ModelController(vertx: Vertx) : Controller(vertx, ResourceType.MODEL) {
 
-    /**
+    */
+/**
      * Start training process
-     */
+     *//*
+
     fun postModel(context: RoutingContext) {
         val modelId = context.request().getParam(ID)
         val cmd = Command(ResourceType.MODEL, Verb.POST, context.body)
@@ -68,4 +73,4 @@ class ModelController(vertx: Vertx) : Controller(vertx, ResourceType.MODEL) {
             }
         }
     }
-}
+}*/

@@ -1,4 +1,5 @@
 package io.cyber.hivemind.service
+/*
 
 import io.cyber.hivemind.*
 import io.cyber.hivemind.constant.ID
@@ -65,4 +66,4 @@ class MLVerticle : AbstractVerticle() {
     companion object {
         private val logger = LoggerFactory.getLogger(MLVerticle::class.java)
     }
-}
+}*/

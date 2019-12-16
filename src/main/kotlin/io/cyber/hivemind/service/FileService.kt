@@ -4,8 +4,11 @@ import io.cyber.hivemind.*
 import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.util.*
 import io.ktor.util.KtorExperimentalAPI
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.io.ByteReadChannel
-import java.io.File
+import kotlinx.coroutines.withContext
+import java.io.*
 import java.util.*
 
 /**
@@ -28,7 +31,7 @@ interface FileService {
     /**
      * store and optionally unzip a resource
      */
-    suspend fun storeScript(id: UUID, scriptZip: File): ScriptMeta
+    suspend fun storeScript(id: UUID, scriptZip: InputStream): ScriptMeta
 
     /**
      * delete a resource
@@ -76,12 +79,14 @@ class DiskFileServiceImpl : FileService {
     }
 
     @KtorExperimentalAPI
-    override suspend fun storeScript(id: UUID, scriptZip: File): ScriptMeta {
-        val dir = prepareDirToWrite(ResourceType.SCRIPT, id)
-        val zipDestination = File(dir, ZIP_NAME)
-        scriptZip.copyTo(zipDestination)
-        unzipData(dir, zipDestination)
-        return ScriptMeta(id, Date())
+    override suspend fun storeScript(id: UUID, scriptZip: InputStream): ScriptMeta {
+        return withContext(Dispatchers.IO) {
+            val dir = prepareDirToWrite(ResourceType.SCRIPT, id)
+            val zipDestination = File(dir, ZIP_NAME)
+            scriptZip.copyTo(FileOutputStream(zipDestination))
+            unzipData(dir, zipDestination)
+            return@withContext ScriptMeta(id, Date())
+        }
     }
 
     override fun delete(type: ResourceType, id: UUID): Boolean {
