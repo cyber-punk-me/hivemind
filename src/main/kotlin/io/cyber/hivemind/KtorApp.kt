@@ -1,12 +1,13 @@
 package io.cyber.hivemind
 
+import io.cyber.hivemind.routing.uploadData
 import io.cyber.hivemind.service.DiskFileServiceImpl
 import io.cyber.hivemind.service.FileService
 import io.ktor.application.*
 import io.ktor.features.Compression
 import io.ktor.routing.*
 import io.ktor.locations.*
-import io.ktor.samples.youkube.uploadScript
+import io.cyber.hivemind.routing.uploadScript
 
 
 /**
@@ -14,6 +15,12 @@ import io.ktor.samples.youkube.uploadScript
  */
 @Location("/script/{scriptId}")
 class Script(val scriptId: String)
+
+/**
+ * Data upload.
+ */
+@Location("/data/{dataId}")
+class Data(val dataId: String)
 
 
 @KtorExperimentalLocationsAPI
@@ -28,5 +35,6 @@ fun Application.main() {
 
     routing {
         uploadScript(fileService)
+        uploadData(fileService)
     }
 }

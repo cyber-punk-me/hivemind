@@ -24,12 +24,12 @@ interface FileService {
     suspend fun getZip(type: ResourceType, id: UUID, refresh: Boolean = false): File
 
     /**
-     * store a byte channel
+     * store training data
      */
-    suspend fun storeData(id: UUID, body: ByteReadChannel): DataMeta
+    suspend fun storeData(id: UUID, body: InputStream, extension: String = ""): DataMeta
 
     /**
-     * store and optionally unzip a resource
+     * store and unzip a script
      */
     suspend fun storeScript(id: UUID, scriptZip: InputStream): ScriptMeta
 
@@ -70,10 +70,10 @@ class DiskFileServiceImpl : FileService {
 
 
     @KtorExperimentalAPI
-    override suspend fun storeData(id: UUID, body: ByteReadChannel): DataMeta {
+    override suspend fun storeData(id: UUID, body: InputStream, extension: String): DataMeta {
         val dir = prepareDirToWrite(ResourceType.DATA, id)
-        val dataPieceName = getNextDataFileName(dir)
-        body.writeToFile(File(dataPieceName))
+        val dataPieceName = "$dir$SEP${getNextDataFileName(dir, extension)}"
+        body.copyTo(BufferedOutputStream(File(dataPieceName).outputStream()))
         //todo load data created date
         return DataMeta(id, Date(), Date())
     }
@@ -83,7 +83,7 @@ class DiskFileServiceImpl : FileService {
         return withContext(Dispatchers.IO) {
             val dir = prepareDirToWrite(ResourceType.SCRIPT, id)
             val zipDestination = File(dir, ZIP_NAME)
-            scriptZip.copyTo(FileOutputStream(zipDestination))
+            scriptZip.copyTo(BufferedOutputStream(FileOutputStream(zipDestination)))
             unzipData(dir, zipDestination)
             return@withContext ScriptMeta(id, Date())
         }

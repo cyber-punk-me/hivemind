@@ -1,4 +1,4 @@
-package io.ktor.samples.youkube
+package io.cyber.hivemind.routing
 
 import io.cyber.hivemind.ResourceType
 import io.cyber.hivemind.Script

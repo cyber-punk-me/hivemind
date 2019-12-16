@@ -26,7 +26,7 @@ import kotlin.collections.HashSet
 
 
 interface MLService {
-    fun train(scriptId: UUID, modelId: UUID, dataId: UUID): ModelMeta
+    suspend fun train(scriptId: UUID, modelId: UUID, dataId: UUID): ModelMeta
     fun getRunConfig(scriptId: UUID): RunConfig
     suspend fun applyData(modelId: UUID, json: JsonNode): JsonNode
     fun getModelsInTraining(stopped: Boolean = false): List<ModelMeta>
@@ -111,7 +111,7 @@ class MLServiceImpl(val fileService: FileService) : MLService {
         }
     }
 
-    override fun train(scriptId: UUID, modelId: UUID, dataId: UUID) : ModelMeta {
+    override suspend fun train(scriptId: UUID, modelId: UUID, dataId: UUID) : ModelMeta {
         return try {
             if (getModelsInTraining().none { it.modelId == modelId }) {
                 println("training model $modelId from script $scriptId, with data $dataId")
