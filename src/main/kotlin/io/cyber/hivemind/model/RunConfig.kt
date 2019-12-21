@@ -20,3 +20,9 @@ data class RunConfig(
         const val PULL_IMAGES = "pullImages"
     }
 }
+
+
+data class TrainModelReq(
+        val scriptId: String,
+        val dataId: String
+)

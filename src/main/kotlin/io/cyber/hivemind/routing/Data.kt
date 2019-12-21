@@ -8,6 +8,7 @@ import io.cyber.hivemind.service.FileService
 import io.cyber.hivemind.toUUID
 import io.ktor.application.call
 import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.LocalFileContent
 import io.ktor.locations.KtorExperimentalLocationsAPI
 import io.ktor.locations.get
@@ -27,6 +28,7 @@ fun Route.uploadData(fileService: FileService) {
         val binary = call.receiveStream()
         val extensionParam = call.parameters[EXT]
         fileService.storeData(it.dataId.toUUID(), binary, extensionParam ?: "")
+        call.respond(HttpStatusCode.OK)
     }
 
     get<Data> {

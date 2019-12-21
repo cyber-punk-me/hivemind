@@ -69,7 +69,6 @@ class DiskFileServiceImpl : FileService {
     }
 
 
-    @KtorExperimentalAPI
     override suspend fun storeData(id: UUID, body: InputStream, extension: String): DataMeta {
         val dir = prepareDirToWrite(ResourceType.DATA, id)
         val dataPieceName = "$dir$SEP${getNextDataFileName(dir, extension)}"
@@ -78,7 +77,6 @@ class DiskFileServiceImpl : FileService {
         return DataMeta(id, Date(), Date())
     }
 
-    @KtorExperimentalAPI
     override suspend fun storeScript(id: UUID, scriptZip: InputStream): ScriptMeta {
         return withContext(Dispatchers.IO) {
             val dir = prepareDirToWrite(ResourceType.SCRIPT, id)

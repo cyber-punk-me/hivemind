@@ -8,6 +8,8 @@ import io.ktor.features.Compression
 import io.ktor.routing.*
 import io.ktor.locations.*
 import io.cyber.hivemind.routing.uploadScript
+import io.ktor.client.features.json.JsonFeature
+import io.ktor.features.CallLogging
 
 
 /**
@@ -30,7 +32,9 @@ fun Application.main() {
     // They are typed, can be constructed to generate URLs, and can be used to register routes.
     install(Locations)
     install(Compression)
-
+    install(CallLogging) {
+        level = org.slf4j.event.Level.INFO
+    }
     val fileService: FileService = DiskFileServiceImpl()
 
     routing {

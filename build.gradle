@@ -41,10 +41,14 @@ dependencies {
     compile "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:$jackson_version"
     compile "io.ktor:ktor-server-netty:$ktor_version"
     compile "io.ktor:ktor-locations:$ktor_version"
+    compile "io.ktor:ktor-gson:$ktor_version"
+    compile "io.ktor:ktor-client-json:$ktor_version"
+    compile "io.ktor:ktor-client-gson:$ktor_version"
     compile "ch.qos.logback:logback-classic:$logback_version"
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     compile "com.spotify:docker-client:$docker_cli_version"
-    testCompile "junit:junit:4.12"
+    testCompile "io.ktor:ktor-server-test-host:$ktor_version"
+
 }
 
 sourceSets {
