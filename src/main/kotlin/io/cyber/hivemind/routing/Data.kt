@@ -27,8 +27,8 @@ fun Route.uploadData(fileService: FileService) {
         //todo validate ext
         val binary = call.receiveStream()
         val extensionParam = call.parameters[EXT]
-        fileService.storeData(it.dataId.toUUID(), binary, extensionParam ?: "")
-        call.respond(HttpStatusCode.OK)
+        val dataMeta = fileService.storeData(it.dataId.toUUID(), binary, extensionParam ?: "")
+        call.respond(dataMeta)
     }
 
     get<Data> {
