@@ -24,4 +24,9 @@ data class ModelMeta(val scriptId: UUID, val modelId: UUID, val dataId: UUID,
             this(scriptId.toUUID(), modelId.toUUID(), dataId.toUUID(), state, startTime)
 }
 
+data class TrainModelReq(
+        val scriptId: String,
+        val dataId: String
+)
+
 fun String.toUUID(): UUID = UUID.fromString(this)

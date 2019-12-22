@@ -2,6 +2,7 @@ package io.cyber.hivemind.service
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -13,8 +14,14 @@ import java.util.*
 import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.model.RunConfig
 import io.cyber.hivemind.util.dockerHostDir
-import io.ktor.client.HttpClient
-import io.ktor.client.request.post
+import io.cyber.hivemind.util.fromJson
+import io.cyber.hivemind.util.toJson
+import io.ktor.client.*
+import io.ktor.client.engine.apache.*
+//import io.ktor.client.features.json.JsonFeature
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.http.content.*
 import org.apache.commons.lang.SystemUtils
 import java.io.File
 import java.lang.IllegalArgumentException
@@ -48,7 +55,10 @@ private const val TF_SERVABlE_URI = "/v1/models"
 
 class MLServiceImpl(val fileService: FileService) : MLService {
 
-    val httpClient = HttpClient()
+    val httpClient = HttpClient(Apache) {
+        //install(JsonFeature)
+    }
+
     val docker: DockerClient
     val yamlMapper: ObjectMapper = ObjectMapper(YAMLFactory()).also { it.registerModule(KotlinModule()) }
     val profile: String = System.getProperty(SYSTEM_PROPERTY_PROFILE_NAME)
@@ -257,8 +267,9 @@ class MLServiceImpl(val fileService: FileService) : MLService {
     override suspend fun applyData(modelId: UUID, json: JsonNode) : JsonNode {
         val modelMeta = getModelsInServing().filter { meta -> meta.modelId == modelId }
         if (!modelMeta.isEmpty() && RunState.SERVING == modelMeta[0].state) {
-            return httpClient.post(scheme = "http", host = TF_SERVABlE_HOST, port = TF_SERVABlE_PORT, path = "$TF_SERVABlE_URI/$modelId:predict",
-                    body = json)
+            val mlResponse = httpClient.post<String>(scheme = "http", host = TF_SERVABlE_HOST, port = TF_SERVABlE_PORT, path = "$TF_SERVABlE_URI/$modelId:predict",
+                    body = TextContent(toJson(json), contentType = ContentType.Application.Json))
+            return fromJson(mlResponse, ObjectNode::class.java)
         } else {
             throw IllegalArgumentException("Can't applyData to this model")
         }

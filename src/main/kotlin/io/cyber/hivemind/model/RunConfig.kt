@@ -21,8 +21,3 @@ data class RunConfig(
     }
 }
 
-
-data class TrainModelReq(
-        val scriptId: String,
-        val dataId: String
-)
