@@ -1,6 +1,6 @@
 package io.cyber.hivemind.util
 
-import io.cyber.hivemind.ResourceType
+import io.cyber.hivemind.model.ResourceType
 import io.cyber.hivemind.constant.*
 import io.ktor.util.KtorExperimentalAPI
 import io.ktor.util.cio.writeChannel

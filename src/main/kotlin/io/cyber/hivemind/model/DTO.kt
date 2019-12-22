@@ -1,4 +1,4 @@
-package io.cyber.hivemind
+package io.cyber.hivemind.model
 
 import java.util.*
 

@@ -3,7 +3,7 @@ package io.cyber.hivemind.routing
 import com.fasterxml.jackson.databind.node.ObjectNode
 import io.cyber.hivemind.Apply
 import io.cyber.hivemind.service.MLService
-import io.cyber.hivemind.toUUID
+import io.cyber.hivemind.model.toUUID
 import io.cyber.hivemind.util.fromJson
 import io.ktor.application.call
 import io.ktor.locations.KtorExperimentalLocationsAPI

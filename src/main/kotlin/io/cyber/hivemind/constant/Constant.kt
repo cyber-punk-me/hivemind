@@ -1,6 +1,6 @@
 package io.cyber.hivemind.constant
 
-import io.cyber.hivemind.ResourceType
+import io.cyber.hivemind.model.ResourceType
 import java.io.File
 
 const val ID = "id"
