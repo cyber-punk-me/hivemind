@@ -53,8 +53,6 @@ class MLServiceImpl(val fileService: FileService) : MLService {
             ?: System.getenv(ENV_VARIABLE_PROFILE_NAME)
             ?: DEFAULT_PROFILE
 
-    val killedContainers: MutableSet<String> = HashSet()
-
     init {
         docker = if (!SystemUtils.IS_OS_WINDOWS) {
             DefaultDockerClient(DOCKER_LOCAL_URI_UNIX)
@@ -101,11 +99,11 @@ class MLServiceImpl(val fileService: FileService) : MLService {
 
     private fun getContainers(stopped: Boolean, label: String): List<ModelMeta> {
         val withLabelParam = DockerClient.ListContainersParam.withLabel(SERVICE, label)
-        if (!stopped) {
-            return docker.listContainers(withLabelParam).map { c -> getMetaFromContainer(c) }
+        return if (!stopped) {
+            docker.listContainers(withLabelParam).map { c -> getMetaFromContainer(c) }
         } else {
             val stoppedParam = DockerClient.ListContainersParam.withStatusExited()
-            return docker.listContainers(withLabelParam, stoppedParam).map { c -> getMetaFromContainer(c) }
+            docker.listContainers(withLabelParam, stoppedParam).map { c -> getMetaFromContainer(c) }
         }
     }
 
@@ -119,8 +117,8 @@ class MLServiceImpl(val fileService: FileService) : MLService {
                     val runConfig = getRunConfig(scriptId)
                     Thread {
                         val trainContainerId = trainInContainer(scriptId, modelId, dataId, runConfig)
-                        docker.waitContainer(trainContainerId)
-                        if (!killedContainers.contains(trainContainerId)) {
+                        val exit = docker.waitContainer(trainContainerId)
+                        if (exit.statusCode() == 0L) {
                             runServableContainer(scriptId, modelId, dataId, runConfig.isPullImages())
                         }
                     }.start()
@@ -246,7 +244,6 @@ class MLServiceImpl(val fileService: FileService) : MLService {
             container.labels()?.containsKey(MODEL_ID) ?: false &&
                     container.labels()?.get(MODEL_ID) == modelId.toString()
         }.forEach { container ->
-            killedContainers.add(container.id())
             docker.killContainer(container.id())
             docker.removeContainer(container.id())
         }

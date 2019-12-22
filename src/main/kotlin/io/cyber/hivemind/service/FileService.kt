@@ -3,10 +3,7 @@ package io.cyber.hivemind.service
 import io.cyber.hivemind.*
 import io.cyber.hivemind.constant.*
 import io.cyber.hivemind.util.*
-import io.ktor.util.KtorExperimentalAPI
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.io.ByteReadChannel
 import kotlinx.coroutines.withContext
 import java.io.*
 import java.util.*
@@ -70,18 +67,24 @@ class DiskFileServiceImpl : FileService {
 
 
     override suspend fun storeData(id: UUID, body: InputStream, extension: String): DataMeta {
-        val dir = prepareDirToWrite(ResourceType.DATA, id)
-        val dataPieceName = "$dir$SEP${getNextDataFileName(dir, extension)}"
-        body.copyTo(BufferedOutputStream(File(dataPieceName).outputStream()))
-        //todo load data created date
-        return DataMeta(id, Date(), Date())
+        return withContext(Dispatchers.IO) {
+            val dir = prepareDirToWrite(ResourceType.DATA, id)
+            val dataPieceName = "$dir$SEP${getNextDataFileName(dir, extension)}"
+            val outputStream = File(dataPieceName).outputStream()
+            body.copyTo(outputStream)
+            outputStream.close()
+            //todo load data created date
+            return@withContext DataMeta(id, Date(), Date())
+        }
     }
 
     override suspend fun storeScript(id: UUID, scriptZip: InputStream): ScriptMeta {
         return withContext(Dispatchers.IO) {
             val dir = prepareDirToWrite(ResourceType.SCRIPT, id)
             val zipDestination = File(dir, ZIP_NAME)
-            scriptZip.copyTo(BufferedOutputStream(FileOutputStream(zipDestination)))
+            val outputStream = zipDestination.outputStream()
+            scriptZip.copyTo(outputStream)
+            outputStream.close()
             unzipData(dir, zipDestination)
             return@withContext ScriptMeta(id, Date())
         }
