@@ -1,21 +1,19 @@
 package io.cyber.hivemind
 
-import io.cyber.hivemind.routing.applyData
-import io.cyber.hivemind.routing.trainModel
-import io.cyber.hivemind.routing.uploadData
+import io.cyber.hivemind.routing.*
 import io.cyber.hivemind.service.DiskFileServiceImpl
 import io.cyber.hivemind.service.FileService
 import io.ktor.application.*
 import io.ktor.features.Compression
 import io.ktor.routing.*
 import io.ktor.locations.*
-import io.cyber.hivemind.routing.uploadScript
 import io.cyber.hivemind.service.MLService
 import io.cyber.hivemind.service.MLServiceImpl
 import io.ktor.features.CallLogging
 import io.ktor.features.ContentNegotiation
 import io.ktor.http.ContentType
 import io.ktor.jackson.JacksonConverter
+import io.ktor.response.respondText
 
 
 /**
@@ -35,6 +33,12 @@ class Data(val dataId: String)
  */
 @Location("/model/{modelId}")
 class Model(val modelId: String)
+
+/**
+ * Model train.
+ */
+@Location("/model/find")
+class ModelFind
 
 /**
  * Model train.
@@ -60,9 +64,13 @@ fun Application.main() {
     val mlService: MLService = MLServiceImpl(fileService)
 
     routing {
+        findModel(mlService)
         uploadScript(fileService)
         uploadData(fileService)
         trainModel(fileService, mlService)
         applyData(mlService)
+        get("time") {
+            call.respondText("${System.currentTimeMillis()}", ContentType.Text.Plain)
+        }
     }
 }
