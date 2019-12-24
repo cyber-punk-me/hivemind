@@ -94,7 +94,7 @@ class DiskFileServiceImpl : FileService {
     }
 
     override fun delete(type: ResourceType, id: UUID): Boolean {
-        val resourceDirName = "${getBaseDir(type)}$id$SEP$id"
+        val resourceDirName = "${getBaseDir(type)}$id"
         return File(resourceDirName).deleteRecursively()
     }
 

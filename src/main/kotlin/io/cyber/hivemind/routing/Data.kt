@@ -1,6 +1,5 @@
 package io.cyber.hivemind.routing
 
-
 import io.cyber.hivemind.Data
 import io.cyber.hivemind.model.ResourceType
 import io.cyber.hivemind.constant.EXT
@@ -8,7 +7,6 @@ import io.cyber.hivemind.service.FileService
 import io.cyber.hivemind.model.toUUID
 import io.ktor.application.call
 import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.LocalFileContent
 import io.ktor.locations.KtorExperimentalLocationsAPI
 import io.ktor.locations.get

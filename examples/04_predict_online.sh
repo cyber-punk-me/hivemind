@@ -5,3 +5,4 @@ data=\
 curl -d '{"instances" : [['$data']] }' \
 -X POST http://localhost:8080/apply/1d722019-c892-44bc-844b-eb5708d55987
 #-X POST http://localhost:8501/v1/models/1d722019-c892-44bc-844b-eb5708d55987:predict
+echo

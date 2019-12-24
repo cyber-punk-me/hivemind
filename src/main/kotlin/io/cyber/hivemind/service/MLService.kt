@@ -16,6 +16,8 @@ import io.cyber.hivemind.model.RunConfig
 import io.cyber.hivemind.model.RunState
 import io.cyber.hivemind.util.dockerHostDir
 import org.apache.commons.lang.SystemUtils
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.lang.IllegalArgumentException
 import java.nio.file.Files
@@ -48,30 +50,32 @@ private const val TF_SERVABlE_URI = "/v1/models"
 
 class MLServiceImpl(val fileService: FileService) : MLService {
 
-    val restClient = RestClient(host = TF_SERVABlE_HOST, port = TF_SERVABlE_PORT)
-    val docker: DockerClient
-    val yamlMapper: ObjectMapper = ObjectMapper(YAMLFactory()).also { it.registerModule(KotlinModule()) }
-    val profile: String = System.getProperty(SYSTEM_PROPERTY_PROFILE_NAME)
+    private val logger: Logger = LoggerFactory.getLogger("FileUtil")
+    private val restClient = RestClient(host = TF_SERVABlE_HOST, port = TF_SERVABlE_PORT)
+    private val docker: DockerClient = if (!SystemUtils.IS_OS_WINDOWS) {
+        DefaultDockerClient(DOCKER_LOCAL_URI_UNIX)
+    } else {
+        DefaultDockerClient.fromEnv().build()
+    }
+    private val yamlMapper: ObjectMapper = ObjectMapper(YAMLFactory()).also { it.registerModule(KotlinModule()) }
+    private val profile: String = System.getProperty(SYSTEM_PROPERTY_PROFILE_NAME)
             ?: System.getenv(ENV_VARIABLE_PROFILE_NAME)
             ?: DEFAULT_PROFILE
 
-    init {
-        docker = if (!SystemUtils.IS_OS_WINDOWS) {
-            DefaultDockerClient(DOCKER_LOCAL_URI_UNIX)
-        } else {
-            DefaultDockerClient.fromEnv().build()
-        }
-    }
 
-
-    private fun prepareLocalMachine(scriptId: UUID, modelId: UUID, dataId: UUID): Boolean {
-        //val modelExists = File("$LOCAL_MODEL$modelId/1").mkdirs()
+    private fun prepareForLearning(scriptId: UUID, modelId: UUID, dataId: UUID) {
         val scriptExists = File("$LOCAL_SCRIPT$scriptId").exists()
         val dataDir = File("$LOCAL_DATA$dataId")
         val dataExists = dataDir.exists()
         val dataFilesExist = !(dataDir.listFiles()?.isEmpty() ?: true)
-        //todo log
-        return scriptExists && dataExists && dataFilesExist && fileService.delete(ResourceType.MODEL, modelId)
+        val cleanedModelDir = fileService.delete(ResourceType.MODEL, modelId)
+        val preparedModelDir = File("$LOCAL_MODEL$modelId/1").mkdirs()
+
+        val goodToGo = scriptExists && dataExists && dataFilesExist && cleanedModelDir && preparedModelDir
+        if (!goodToGo) {
+            throw RuntimeException("Prepare for learning failed : scriptExists:$scriptExists, dataExists:$dataExists," +
+                    " dataFilesExist:$dataFilesExist, cleanedModelDir:$cleanedModelDir, preparedModelDir:$preparedModelDir")
+        }
     }
 
     override fun getRunConfig(scriptId: UUID): RunConfig {
@@ -109,31 +113,27 @@ class MLServiceImpl(val fileService: FileService) : MLService {
         }
     }
 
-    override suspend fun train(scriptId: UUID, modelId: UUID, dataId: UUID) : ModelMeta {
+    override suspend fun train(scriptId: UUID, modelId: UUID, dataId: UUID): ModelMeta {
         return try {
             if (getModelsInTraining().none { it.modelId == modelId }) {
-                println("training model $modelId from script $scriptId, with data $dataId")
+                logger.info("training model $modelId from script $scriptId, with data $dataId")
                 removeContainers(modelId)
-
-                if (prepareLocalMachine(scriptId, modelId, dataId)) {
-                    val runConfig = getRunConfig(scriptId)
-                    Thread {
-                        val trainContainerId = trainInContainer(scriptId, modelId, dataId, runConfig)
-                        val exit = docker.waitContainer(trainContainerId)
-                        if (exit.statusCode() == 0L) {
-                            runServableContainer(scriptId, modelId, dataId, runConfig.isPullImages())
-                        }
-                    }.start()
-                    ModelMeta(scriptId, modelId, dataId, RunState.TRAINING, Date())
-                } else {
-                    ModelMeta(scriptId, modelId, dataId, RunState.ERROR, Date())
-                }
+                prepareForLearning(scriptId, modelId, dataId)
+                val runConfig = getRunConfig(scriptId)
+                Thread {
+                    val trainContainerId = trainInContainer(scriptId, modelId, dataId, runConfig)
+                    val exit = docker.waitContainer(trainContainerId)
+                    if (exit.statusCode() == 0L) {
+                        runServableContainer(scriptId, modelId, dataId, runConfig.isPullImages())
+                    }
+                }.start()
+                ModelMeta(scriptId, modelId, dataId, RunState.TRAINING, Date())
             } else {
-                println("Can't start the training right now. Model $modelId is busy.")
+                logger.warn("Can't start the training right now. Model $modelId is busy.")
                 ModelMeta(scriptId, modelId, dataId, RunState.ERROR, Date())
             }
         } catch (t: Throwable) {
-            println(t.message)
+            logger.error(t.message, t)
             ModelMeta(scriptId, modelId, dataId, RunState.ERROR, Date())
         }
     }
@@ -184,7 +184,7 @@ class MLServiceImpl(val fileService: FileService) : MLService {
         return id!!
     }
 
-    private fun getCMD(cmd: List<String>, exportSession : Boolean) : List<String> {
+    private fun getCMD(cmd: List<String>, exportSession: Boolean): List<String> {
         val result = cmd.toMutableList()
         val iLast = cmd.size - 1
         //making container directories deletable by hivemind
@@ -251,7 +251,7 @@ class MLServiceImpl(val fileService: FileService) : MLService {
         }
     }
 
-    override suspend fun applyData(modelId: UUID, json: JsonNode) : JsonNode {
+    override suspend fun applyData(modelId: UUID, json: JsonNode): JsonNode {
         val modelMeta = getModelsInServing().filter { meta -> meta.modelId == modelId }
         if (!modelMeta.isEmpty() && RunState.SERVING == modelMeta[0].state) {
             return restClient.applyData("$TF_SERVABlE_URI/$modelId:predict", json)

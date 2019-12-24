@@ -2,23 +2,22 @@ package io.cyber.hivemind.util
 
 import io.cyber.hivemind.model.ResourceType
 import io.cyber.hivemind.constant.*
-import io.ktor.util.KtorExperimentalAPI
-import io.ktor.util.cio.writeChannel
-import kotlinx.coroutines.io.ByteReadChannel
-import kotlinx.coroutines.io.copyAndClose
 import org.apache.commons.lang.SystemUtils
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.io.*
 import java.util.*
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
-
 /**
  * User: kirillskiy
  * Date: 22/07/2018
  * Time: 21:26
  */
+
+val logger: Logger = LoggerFactory.getLogger("FileUtil")
 
 const val BUFFER_SIZE = 4096
 
@@ -71,7 +70,7 @@ fun unzipData(destination: File, zipFile: File) {
                         }
                         val resDirName = if (rootEntryDir == null) entryName else entryName.substring(rootEntryDir!!.length)
                         if (!resDirName.isEmpty() && !File(destination, resDirName).mkdir()) {
-                            print("Failed to create directory")
+                            logger.error("Failed to create directory")
                             return
                         }
                     } else {
@@ -111,10 +110,6 @@ fun makeZip(type: ResourceType, id: UUID): File {
     return File(zipName)
 }
 
-
-@KtorExperimentalAPI
-suspend fun ByteReadChannel.writeToFile(outFile: File) = copyAndClose(outFile.writeChannel())
-
 private fun zipDir(dir: String, zos: ZipOutputStream, pathInDir: String = "") {
     val zipDir = File(dir)
     val ls = zipDir.list { f, s ->
@@ -139,12 +134,4 @@ private fun zipDir(dir: String, zos: ZipOutputStream, pathInDir: String = "") {
             fis.close()
         }
     }
-}
-
-
-
-fun main(args: Array<String>) {
-    val type = ResourceType.MODEL
-    val id = UUID.fromString("1d722019-c892-44bc-844b-eb5708d55987")
-    println(makeZip(type, id))
 }
