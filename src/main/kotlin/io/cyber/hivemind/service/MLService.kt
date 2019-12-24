@@ -123,8 +123,13 @@ class MLServiceImpl(val fileService: FileService) : MLService {
                 Thread {
                     val trainContainerId = trainInContainer(scriptId, modelId, dataId, runConfig)
                     val exit = docker.waitContainer(trainContainerId)
+                    val trainLog = trainContainerId.getDockerStdLog()
+                    trainLog?.let { logger.info("Container $trainContainerId log: \n $it") }
                     if (exit.statusCode() == 0L) {
                         runServableContainer(scriptId, modelId, dataId, runConfig.isPullImages())
+                    } else {
+                        val trainError = trainContainerId.getDockerErrLog()
+                        trainError?.let { logger.info("Container $trainContainerId error: \n $it") }
                     }
                 }.start()
                 ModelMeta(scriptId, modelId, dataId, RunState.TRAINING, Date())
@@ -137,6 +142,12 @@ class MLServiceImpl(val fileService: FileService) : MLService {
             ModelMeta(scriptId, modelId, dataId, RunState.ERROR, Date())
         }
     }
+
+    private fun String.getDockerStdLog() : String? =
+            docker.logs(this, DockerClient.LogsParam.stdout(), DockerClient.LogsParam.tail(50))?.readFully()
+
+    private fun String.getDockerErrLog() : String? =
+            docker.logs(this, DockerClient.LogsParam.stderr(), DockerClient.LogsParam.tail(50))?.readFully()
 
     private fun trainInContainer(scriptId: UUID, modelId: UUID, dataId: UUID, runConfig: RunConfig): String {
         val labels = hashMapOf(
