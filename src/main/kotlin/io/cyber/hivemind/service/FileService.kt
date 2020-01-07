@@ -77,7 +77,8 @@ class DiskFileServiceImpl : FileService {
             body.copyTo(outputStream)
             outputStream.close()
             //todo load data created date
-            return@withContext DataMeta(id, Date(), Date())
+            val time = System.currentTimeMillis()
+            return@withContext DataMeta(id, time, time)
         }
     }
 
@@ -89,7 +90,8 @@ class DiskFileServiceImpl : FileService {
             scriptZip.copyTo(outputStream)
             outputStream.close()
             unzipData(dir, zipDestination)
-            return@withContext ScriptMeta(id, Date())
+            val time = System.currentTimeMillis()
+            return@withContext ScriptMeta(id, time)
         }
     }
 

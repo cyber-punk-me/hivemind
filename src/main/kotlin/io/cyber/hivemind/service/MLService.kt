@@ -92,7 +92,7 @@ class MLServiceImpl(val fileService: FileService) : MLService {
             SERVING -> RunState.SERVING
             else -> RunState.ERROR
         }
-        return ModelMeta(labels[SCRIPT_ID]!!, labels[MODEL_ID]!!, labels[DATA_ID]!!, state, Date(container.created()))
+        return ModelMeta(labels[SCRIPT_ID]!!, labels[MODEL_ID]!!, labels[DATA_ID]!!, state, container.created())
     }
 
     override fun getModelsInTraining(stopped: Boolean): List<ModelMeta> {
@@ -132,14 +132,14 @@ class MLServiceImpl(val fileService: FileService) : MLService {
                         trainError?.let { logger.info("Container $trainContainerId error: \n $it") }
                     }
                 }.start()
-                ModelMeta(scriptId, modelId, dataId, RunState.TRAINING, Date())
+                ModelMeta(scriptId, modelId, dataId, RunState.TRAINING, System.currentTimeMillis())
             } else {
                 logger.warn("Can't start the training right now. Model $modelId is busy.")
-                ModelMeta(scriptId, modelId, dataId, RunState.ERROR, Date())
+                ModelMeta(scriptId, modelId, dataId, RunState.ERROR, System.currentTimeMillis())
             }
         } catch (t: Throwable) {
             logger.error(t.message, t)
-            ModelMeta(scriptId, modelId, dataId, RunState.ERROR, Date())
+            ModelMeta(scriptId, modelId, dataId, RunState.ERROR, System.currentTimeMillis())
         }
     }
 
