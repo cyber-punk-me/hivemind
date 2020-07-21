@@ -17,7 +17,7 @@ import io.ktor.response.respond
 import io.ktor.routing.Route
 
 /**
- * Register [Data] routes.
+ * Register [Model] routes.
  */
 @KtorExperimentalLocationsAPI
 fun Route.trainModel(fileService: FileService, mlService: MLService) {

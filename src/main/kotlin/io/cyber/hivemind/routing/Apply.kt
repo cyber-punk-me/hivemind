@@ -12,6 +12,9 @@ import io.ktor.request.receiveStream
 import io.ktor.response.respond
 import io.ktor.routing.Route
 
+/**
+ * Register [Apply] routes.
+ */
 @KtorExperimentalLocationsAPI
 fun Route.applyData(mlService: MLService) {
 

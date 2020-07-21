@@ -8,6 +8,9 @@ import io.ktor.locations.post
 import io.ktor.response.respond
 import io.ktor.routing.Route
 
+/**
+ * Register [ModelFind] routes.
+ */
 @KtorExperimentalLocationsAPI
 fun Route.findModel(mlService: MLService) {
     post<ModelFind> {
